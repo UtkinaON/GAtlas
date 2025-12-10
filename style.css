@@ -1,0 +1,49 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+#header {
+  background: #2E7D32;
+  color: white;
+  padding: 16px 24px;
+  text-align: center;
+}
+
+#header h1 {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+#map {
+  position: absolute;
+  top: 80px;
+  left: 0;
+  right: 300px;
+  bottom: 0;
+  z-index: 1;
+}
+
+#sidebar {
+  position: absolute;
+  top: 80px;
+  right: 0;
+  width: 300px;
+  bottom: 0;
+  background: #f9f9f9;
+  border-left: 1px solid #ddd;
+  padding: 20px;
+  overflow-y: auto;
+  z-index: 2;
+}
+
+#info p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+#info h3 {
+  margin: 16px 0 8px;
+  color: #2E7D32;
+}
