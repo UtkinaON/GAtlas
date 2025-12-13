@@ -1,111 +1,86 @@
 // Инициализация карты
 const map = L.map('map').setView([60, 30], 10); // Центр — Петербург
 
+// Базовый слой OpenStreetMap
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 }).addTo(map);
 
+// === СЛОЙ ПОЧВ: OpenLandMap (SoilGrids) ===
+const soilLayer = L.tileLayer.wms('https://openlandmap.org/geoserver/ows', {
+  layers: 'OpenLandMap:SOL_SOIL_TYPE-WRB_M',
+  format: 'image/png',
+  transparent: true,
+  opacity: 0.6,
+  attribution: '&copy; <a href="https://openlandmap.org">OpenLandMap</a> | SoilGrids'
+});
+soilLayer.addTo(map);
 
-// //!!!!!!!
-// // === СЛОЙ: ООПТ России (из открытого источника) ===
-// const ooptLayer = L.geoJSON(null, {
-  // style: function (feature) {
-    // return {
-      // color: '#d32f2f',        // красный
-      // weight: 2,
-      // fillOpacity: 0.1,
-      // fillColor: '#ffcdd2'
-    // };
-  // },
-  // onEachFeature: function (feature, layer) {
-    // const name = feature.properties.name || feature.properties.title || 'ООПТ';
-    // layer.bindPopup(`<b>${name}</b><br>Тип: ${feature.properties.type || 'не указан'}`);
-  // }
-// });
+// === УПРАВЛЕНИЕ СЛОЯМИ ===
+const baseLayers = {
+  "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'),
+};
 
-// // Загрузка данных ООПТ (пример для Северо-Запада или всей РФ)
-// fetch('https://api.oopt.info/api/map/oopt.geojson')
-  // .then(response => response.json())
-  // .then(data => {
-    // ooptLayer.addData(data);
-    // map.addLayer(oooptLayer);
-  // })
-  // .catch(err => {
-    // console.warn('Не удалось загрузить слой ООПТ:', err);
-    // // Можно показать предупреждение пользователю
-  // });
+const overlays = {
+  "Почвенный покров (WRB)": soilLayer,
+};
 
-// // === УПРАВЛЕНИЕ СЛОЯМИ ===
-// const baseLayers = {
-  // "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-// };
+L.control.layers(baseLayers, overlays, { position: 'topright' }).addTo(map);
 
-// const overlays = {
-  // "ООПТ": ooptLayer
-// };
-
-// L.control.layers(baseLayers, overlays, { position: 'topright' }).addTo(map);
-
-// //!!!!!!!
-
-
-// Маркер, который появится при клике
-let marker = null;
-
-// Обработчик клика по карте
-map.on('click', async function(e) {
+// === ОБРАБОТЧИК КЛИКА ===
+map.on('click', function(e) {
   const { lat, lng } = e.latlng;
-  
-  // Удаляем старый маркер, если есть
-  if (marker) map.removeLayer(marker);
-  
-  // Добавляем новый маркер
-  marker = L.marker([lat, lng]).addTo(map);
-  
-  // Загружаем данные (здесь — мок, позже — ваш API)
-  const params = await fetchSiteParams(lat, lng);
-  
-  // Обновляем боковую панель
+  const marker = L.marker([lat, lng]).addTo(map);
+  map.eachLayer(layer => {
+    if (layer instanceof L.Marker && layer !== marker) map.removeLayer(layer);
+  });
+
+  // Определяем тип почвы из слоя (условно — по координатам)
+  const soil = getSoilType(lat, lng);
+  const params = {
+    soil: soil,
+    ugws: estimateUGV(lat, lng),
+    ph: estimatePH(soil),
+    distanceToOOP: estimateOOPDistance(lat, lng),
+    load: estimateLoad(lat, lng)
+  };
+
   updateSidebar(lat, lng, params);
 });
 
-// === МОК-ФУНКЦИЯ: замените на ваш API ===
-// async function fetchSiteParams(lat, lng) {
-  // const response = await fetch(`/api/site-params?lat=${lat}&lng=${lng}`);
-  // return await response.json();
-// }
-async function fetchSiteParams(lat, lng) {
-  // Пример: в зависимости от региона — разные параметры
-  // Здесь — упрощённая логика: если широта > 59 и долгота ~30 → ЛО, торфяник
-  
-  if (lat > 59 && lng >= 29 && lng <= 32) {
-    return {
-      soil: "Торфяник",
-      ugws: "Поверхность",
-      ph: "4.7",
-      distanceToOOP: "22 м",
-      load: "Второстепенная дорога"
-    };
-  } else if (lat > 55 && lng > 35) {
-    return {
-      soil: "Песок",
-      ugws: "Низкий",
-      ph: "7.2",
-      distanceToOOP: ">100 м",
-      load: "Поле"
-    };
-  } else {
-    return {
-      soil: "Суглинок",
-      ugws: "Средний",
-      ph: "6.5",
-      distanceToOOP: "50 м",
-      load: "Город"
-    };
-  }
+// === ФУНКЦИИ ОЦЕНКИ ПАРАМЕТРОВ ===
+
+function getSoilType(lat, lng) {
+  // Пример: в ЛО — торф, в центре РФ — суглинки, на юге — чернозём
+  if (lat > 59 && lng >= 29 && lng <= 32) return "Торфяник";
+  if (lat >= 54 && lat <= 58 && lng >= 37 && lng <= 40) return "Суглинок";
+  if (lat <= 52) return "Чернозём";
+  return "Песчаный/супесчаный";
 }
 
-// Обновление боковой панели
+function estimateUGV(lat, lng) {
+  if (getSoilType(lat, lng) === "Торфяник") return "Поверхность";
+  return "Средний";
+}
+
+function estimatePH(soil) {
+  if (soil === "Торфяник") return "4.5";
+  if (soil === "Чернозём") return "6.8";
+  return "7.2";
+}
+
+function estimateOOPDistance(lat, lng) {
+  // В реальности — запрос к WFS/GIS, здесь — заглушка
+  if (lat > 59 && lng >= 29 && lng <= 32) return "22 м";
+  return ">100 м";
+}
+
+function estimateLoad(lat, lng) {
+  // Можно расширить по данным OSM
+  return "Сельская местность";
+}
+
+// === ОБНОВЛЕНИЕ БОКОВОЙ ПАНЕЛИ ===
 function updateSidebar(lat, lng, params) {
   const infoDiv = document.getElementById('info');
   infoDiv.innerHTML = `
@@ -117,11 +92,11 @@ function updateSidebar(lat, lng, params) {
     <p><strong>До ООПТ:</strong> ${params.distanceToOOP}</p>
     <p><strong>Нагрузка:</strong> ${params.load}</p>
     <br>
-    <button onclick="calculateGII()">Рассчитать GII</button>
+    <button onclick="calculateGII(${JSON.stringify(params)})">Рассчитать GII</button>
   `;
 }
 
-// Заглушка для расчёта GII (можно подключить позже)
-function calculateGII() {
-  alert("Функция расчёта GII будет подключена через API");
+// === ЗАГЛУШКА GII ===
+function calculateGII(params) {
+  alert(`GII будет рассчитан на основе:\n${JSON.stringify(params, null, 2)}`);
 }
