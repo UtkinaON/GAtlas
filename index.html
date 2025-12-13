@@ -10,12 +10,6 @@
 <body>
   <div id="header">
     <h1>Гео Атлас дренажных систем</h1>
-    <div id="auth-controls">
-      <span id="user-info"></span>
-      <button id="loginBtn" onclick="showAuthModal(true)">Вход</button>
-      <button id="registerBtn" onclick="showAuthModal(false)">Регистрация</button>
-      <button id="logoutBtn" style="display:none;" onclick="logout()">Выход</button>
-    </div>
     <p>Кликните по карте, чтобы получить параметры местности</p>
   </div>
 
@@ -24,20 +18,6 @@
   <div id="sidebar">
     <h2>Параметры участка</h2>
     <div id="info">Выберите точку на карте</div>
-  </div>
-
-  <!-- Модальное окно авторизации -->
-  <div id="authModal" class="modal">
-    <div class="modal-content">
-      <span class="close" onclick="closeAuthModal()">&times;</span>
-      <h3 id="authTitle">Вход</h3>
-      <form id="authForm">
-        <input type="email" id="email" placeholder="Email" required><br>
-        <input type="password" id="password" placeholder="Пароль" required><br>
-        <button type="submit">Отправить</button>
-        <p id="authMessage"></p>
-      </form>
-    </div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
