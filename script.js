@@ -1,86 +1,103 @@
 // Инициализация карты
-const map = L.map('map').setView([60, 30], 10); // Центр — Петербург
+const map = L.map('map').setView([60, 30], 10);
 
-// Базовый слой OpenStreetMap
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+// Базовый слой
+const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-}).addTo(map);
-
-// === СЛОЙ ПОЧВ: OpenLandMap (SoilGrids) ===
-const soilLayer = L.tileLayer.wms('https://openlandmap.org/geoserver/ows', {
-  layers: 'OpenLandMap:SOL_SOIL_TYPE-WRB_M',
-  format: 'image/png',
-  transparent: true,
-  opacity: 0.6,
-  attribution: '&copy; <a href="https://openlandmap.org">OpenLandMap</a> | SoilGrids'
 });
-soilLayer.addTo(map);
+osm.addTo(map);
 
-// === УПРАВЛЕНИЕ СЛОЯМИ ===
-const baseLayers = {
-  "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'),
-};
+// Переменная для слоя почв (изначально пустая)
+let soilLayer = null;
 
-const overlays = {
-  "Почвенный покров (WRB)": soilLayer,
-};
+// Загрузка GeoJSON
+fetch('soils_spb_lo.geojson')
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Не удалось загрузить soils_spb_lo.geojson');
+    }
+    return response.json();
+  })
+  .then(data => {
+    // Создаём слой
+    soilLayer = L.geoJSON(data, {
+      style: function(feature) {
+        const type = feature.properties.soil_type;
+        if (type === "Торфяник") return { fillColor: "#8B4513", color: "#5D2906", weight: 1, fillOpacity: 0.5 };
+        if (type === "Суглинок") return { fillColor: "#A0522D", color: "#653E1A", weight: 1, fillOpacity: 0.5 };
+        if (type === "Песок / супесь") return { fillColor: "#F4A460", color: "#D2691E", weight: 1, fillOpacity: 0.5 };
+        return { fillColor: "#8FBC8F", color: "#2F4F4F", weight: 1, fillOpacity: 0.5 };
+      },
+      onEachFeature: function(feature, layer) {
+        const props = feature.properties;
+        const popup = `
+          <b>Тип почвы:</b> ${props.soil_type}<br>
+          <b>pH:</b> ${props.ph_range}<br>
+          <b>K<sub>почва</sub>:</b> ${props.K_soil}
+        `;
+        layer.bindPopup(popup);
+      }
+    });
 
-L.control.layers(baseLayers, overlays, { position: 'topright' }).addTo(map);
+    // Добавляем на карту (по умолчанию включён)
+    soilLayer.addTo(map);
 
-// === ОБРАБОТЧИК КЛИКА ===
-map.on('click', function(e) {
-  const { lat, lng } = e.latlng;
-  const marker = L.marker([lat, lng]).addTo(map);
-  map.eachLayer(layer => {
-    if (layer instanceof L.Marker && layer !== marker) map.removeLayer(layer);
+    // Обновляем контрол слоёв — только после загрузки
+    const baseLayers = {
+      "OpenStreetMap": osm
+    };
+
+    const overlays = {
+      "Виды почв (СПб и ЛО)": soilLayer
+    };
+
+    L.control.layers(baseLayers, overlays, { position: 'topright' }).addTo(map);
+  })
+  .catch(err => {
+    console.error('Ошибка загрузки почвенного слоя:', err);
+    alert('Не удалось загрузить данные о почвах. Проверьте, что файл soils_spb_lo.geojson лежит в той же папке.');
   });
 
-  // Определяем тип почвы из слоя (условно — по координатам)
-  const soil = getSoilType(lat, lng);
-  const params = {
-    soil: soil,
-    ugws: estimateUGV(lat, lng),
-    ph: estimatePH(soil),
-    distanceToOOP: estimateOOPDistance(lat, lng),
-    load: estimateLoad(lat, lng)
-  };
+// === Далее — остальной код (без изменений) ===
 
+let marker = null;
+
+map.on('click', async function(e) {
+  const { lat, lng } = e.latlng;
+  if (marker) map.removeLayer(marker);
+  marker = L.marker([lat, lng]).addTo(map);
+  const params = await fetchSiteParams(lat, lng);
   updateSidebar(lat, lng, params);
 });
 
-// === ФУНКЦИИ ОЦЕНКИ ПАРАМЕТРОВ ===
-
-function getSoilType(lat, lng) {
-  // Пример: в ЛО — торф, в центре РФ — суглинки, на юге — чернозём
-  if (lat > 59 && lng >= 29 && lng <= 32) return "Торфяник";
-  if (lat >= 54 && lat <= 58 && lng >= 37 && lng <= 40) return "Суглинок";
-  if (lat <= 52) return "Чернозём";
-  return "Песчаный/супесчаный";
+async function fetchSiteParams(lat, lng) {
+  if (lat > 59 && lng >= 29 && lng <= 32) {
+    return {
+      soil: "Торфяник",
+      ugws: "Поверхность",
+      ph: "4.7",
+      distanceToOOP: "22 м",
+      load: "Второстепенная дорога"
+    };
+  } else if (lat > 55 && lng > 35) {
+    return {
+      soil: "Песок",
+      ugws: "Низкий",
+      ph: "7.2",
+      distanceToOOP: ">100 м",
+      load: "Поле"
+    };
+  } else {
+    return {
+      soil: "Суглинок",
+      ugws: "Средний",
+      ph: "6.5",
+      distanceToOOP: "50 м",
+      load: "Город"
+    };
+  }
 }
 
-function estimateUGV(lat, lng) {
-  if (getSoilType(lat, lng) === "Торфяник") return "Поверхность";
-  return "Средний";
-}
-
-function estimatePH(soil) {
-  if (soil === "Торфяник") return "4.5";
-  if (soil === "Чернозём") return "6.8";
-  return "7.2";
-}
-
-function estimateOOPDistance(lat, lng) {
-  // В реальности — запрос к WFS/GIS, здесь — заглушка
-  if (lat > 59 && lng >= 29 && lng <= 32) return "22 м";
-  return ">100 м";
-}
-
-function estimateLoad(lat, lng) {
-  // Можно расширить по данным OSM
-  return "Сельская местность";
-}
-
-// === ОБНОВЛЕНИЕ БОКОВОЙ ПАНЕЛИ ===
 function updateSidebar(lat, lng, params) {
   const infoDiv = document.getElementById('info');
   infoDiv.innerHTML = `
@@ -92,11 +109,10 @@ function updateSidebar(lat, lng, params) {
     <p><strong>До ООПТ:</strong> ${params.distanceToOOP}</p>
     <p><strong>Нагрузка:</strong> ${params.load}</p>
     <br>
-    <button onclick="calculateGII(${JSON.stringify(params)})">Рассчитать GII</button>
+    <button onclick="calculateGII()">Рассчитать GII</button>
   `;
 }
 
-// === ЗАГЛУШКА GII ===
-function calculateGII(params) {
-  alert(`GII будет рассчитан на основе:\n${JSON.stringify(params, null, 2)}`);
+function calculateGII() {
+  alert("Функция расчёта GII будет подключена через API");
 }
