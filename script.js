@@ -1,7 +1,10 @@
+// Подключаем Turf.js (обязательно выше этого кода в index.html)
+// <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
 // Инициализация карты
 const map = L.map('map').setView([60, 30], 10);
 
-// Базовый слой
+// Базовый слой OpenStreetMap
 const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 });
@@ -12,42 +15,35 @@ let soilLayer = null;
 let ugvLayer = null;
 let ooprLayer = null;
 
-// Обработка клика: определение параметров по координатам
+// === ФУНКЦИЯ: определение параметров по клику ===
 function getParamsAtPoint(lat, lng) {
-  const point = L.latLng(lat, lng);
-  let soil = "Не определён";
-  let ugv = "Не определён";
-  let oopr = "Не определён";
-  let k_soil = 1.0;
-  let k_ugv = 1.0;
-  let k_oopr = 1.0;
+  const pointGeo = turf.point([lng, lat]); // Turf использует [долгота, широта]!
 
-  // Проверка почв с использованием Turf.js
+  // Инициализация
+  let soil = "Не определён", k_soil = 1.0;
+  let ugv = "Не определён", k_ugv = 1.0;
+  let oopr = "Не определён", k_oopr = 1.0;
+
+  // --- ПОЧВЫ ---
   if (soilLayer) {
-    soil = "Не определён";
-    k_soil = 1.0;
     soilLayer.eachLayer(layer => {
       if (layer instanceof L.Polygon) {
-        const poly = layer.toGeoJSON(); // Преобразуем в GeoJSON
-        const pointGeo = turf.point([lng, lat]); // Внимание: [долгота, широта]!
+        const poly = layer.toGeoJSON();
         if (turf.booleanPointInPolygon(pointGeo, poly)) {
           const props = layer.feature.properties;
           soil = props.soil_type || "Не указан";
           k_soil = parseFloat(props.K_soil) || 1.0;
-          return false; // остановить перебор (если не нужно пересечение)
+          return false; // остановить перебор
         }
       }
     });
   }
 
-  // Проверка УГВ
+  // --- УГВ ---
   if (ugvLayer) {
-    ugv = "Не определён";
-    k_ugv = 1.0;
     ugvLayer.eachLayer(layer => {
       if (layer instanceof L.Polygon) {
         const poly = layer.toGeoJSON();
-        const pointGeo = turf.point([lng, lat]);
         if (turf.booleanPointInPolygon(pointGeo, poly)) {
           const props = layer.feature.properties;
           ugv = props.ugv_class || "Не указан";
@@ -58,13 +54,17 @@ function getParamsAtPoint(lat, lng) {
     });
   }
 
-  // Проверка ООПТ
+  // --- ООПТ ---
   if (ooprLayer) {
     ooprLayer.eachLayer(layer => {
-      if (layer instanceof L.Polygon && layer.getBounds().contains(point)) {
-        const props = layer.feature.properties;
-        oopr = props.zone_type;
-        k_oopr = props.k_oopr || 1.0;
+      if (layer instanceof L.Polygon) {
+        const poly = layer.toGeoJSON();
+        if (turf.booleanPointInPolygon(pointGeo, poly)) {
+          const props = layer.feature.properties;
+          oopr = props.zone_type || "Не указана";
+          k_oopr = parseFloat(props.k_oopr) || 1.0;
+          return false;
+        }
       }
     });
   }
@@ -73,24 +73,15 @@ function getParamsAtPoint(lat, lng) {
   let ph = "7.0";
   if (soil === "Торфяник") ph = "4.7";
   else if (soil === "Суглинок") ph = "6.5";
-  else if (soil === "Песок / супесь") ph = "7.2";
+  else if (soil.includes("Песок")) ph = "7.2";
 
-  // Оценка нагрузки (пока заглушка)
+  // Нагрузка — пока заглушка (можно расширить позже)
   const load = "Сельская местность";
 
-  return {
-    soil,
-    ugws: ugv,
-    ph,
-    distanceToOOP: oopr,
-    load,
-    k_soil,
-    k_ugv,
-    k_oopr
-  };
+  return { soil, ugws: ugv, ph, distanceToOOP: oopr, load, k_soil, k_ugv, k_oopr };
 }
 
-// Загрузка всех слоёв
+// === ЗАГРУЗКА СЛОЁВ ===
 Promise.all([
   fetch('soils_spb_lo.geojson').then(r => r.json()),
   fetch('ugv_spb_lo.geojson').then(r => r.json()),
@@ -100,16 +91,16 @@ Promise.all([
 
   // === Слой почв ===
   soilLayer = L.geoJSON(soilData, {
-    style: function(feature) {
-      const type = feature.properties.soil_type;
-      if (type === "Торфяник") return { fillColor: "#8B4513", color: "#5D2906", weight: 1, fillOpacity: 0.5 };
-      if (type === "Суглинок") return { fillColor: "#A0522D", color: "#653E1A", weight: 1, fillOpacity: 0.5 };
-      if (type === "Песок / супесь") return { fillColor: "#F4A460", color: "#D2691E", weight: 1, fillOpacity: 0.5 };
+    style: f => {
+      const t = f.properties.soil_type;
+      if (t === "Торфяник") return { fillColor: "#8B4513", color: "#5D2906", weight: 1, fillOpacity: 0.5 };
+      if (t === "Суглинок") return { fillColor: "#A0522D", color: "#653E1A", weight: 1, fillOpacity: 0.5 };
+      if (t === "Песок / супесь") return { fillColor: "#F4A460", color: "#D2691E", weight: 1, fillOpacity: 0.5 };
       return { fillColor: "#8FBC8F", color: "#2F4F4F", weight: 1, fillOpacity: 0.5 };
     },
-    onEachFeature: function(feature, layer) {
-      const p = feature.properties;
-      layer.bindPopup(`<b>Почва:</b> ${p.soil_type}<br>pH: ${p.ph_range}<br>K<sub>soil</sub>: ${p.K_soil}`);
+    onEachFeature: (f, l) => {
+      const p = f.properties;
+      l.bindPopup(`<b>Почва:</b> ${p.soil_type}<br>pH: ${p.ph_range}<br>K<sub>soil</sub>: ${p.K_soil}`);
     }
   });
 
@@ -147,10 +138,10 @@ Promise.all([
 })
 .catch(err => {
   console.error('Ошибка загрузки GeoJSON:', err);
-  alert('Не удалось загрузить данные. Убедитесь, что файлы .geojson лежат в той же папке.');
+  document.getElementById('info').innerHTML = `<p style="color:red">⚠️ Ошибка загрузки данных.</p><p>Убедитесь, что файлы <code>soils_spb_lo.geojson</code>, <code>ugv_spb_lo.geojson</code> и <code>oopr_spb_lo.geojson</code> лежат в той же папке.</p>`;
 });
 
-// === Обработчик клика по карте ===
+// === ОБРАБОТЧИК КЛИКА ===
 let marker = null;
 map.on('click', function(e) {
   const { lat, lng } = e.latlng;
@@ -162,7 +153,7 @@ map.on('click', function(e) {
   updateSidebar(lat, lng, params);
 });
 
-// === Обновление боковой панели ===
+// === ОБНОВЛЕНИЕ БОКОВОЙ ПАНЕЛИ ===
 function updateSidebar(lat, lng, params) {
   const infoDiv = document.getElementById('info');
   infoDiv.innerHTML = `
@@ -178,8 +169,26 @@ function updateSidebar(lat, lng, params) {
   `;
 }
 
-// === Расчёт GII (заглушка) ===
+// === РАСЧЁТ GII ===
 function calculateGII(k_soil, k_ugv, k_oopr) {
-  const Kkr = k_soil * k_ugv * k_oopr * 1.0 * 1.0; // остальные K пока = 1
-  alert(`Kкр = ${Kkr.toFixed(2)}\nGII = GII₀ × ${Kkr.toFixed(2)}\n(Для GII₀ выберите материал)`);
+  const Kkr = k_soil * k_ugv * k_oopr; // остальные K пока = 1
+  const GII0_PND = 2.12;
+  const GII = (GII0_PND * Kkr).toFixed(2);
+
+  const message = `
+    <strong>Результат расчёта:</strong><br>
+    GII₀ (ПНД) = 2.12<br>
+    K<sub>кр</sub> = ${k_soil} × ${k_ugv} × ${k_oopr} = ${Kkr.toFixed(2)}<br>
+    <b>GII = ${GII}</b><br><br>
+    <em>Класс риска: ${getRiskClass(GII)}</em>
+  `;
+  document.getElementById('info').innerHTML += `<div style="margin-top:15px; padding:10px; background:#fff8e1; border-left:4px solid #ffa000;">${message}</div>`;
+}
+
+function getRiskClass(gii) {
+  if (gii <= 2.0) return "I — Очень низкий";
+  if (gii <= 4.0) return "II — Низкий";
+  if (gii <= 6.0) return "III — Умеренный";
+  if (gii <= 8.0) return "IV — Высокий";
+  return "V — Критический";
 }
