@@ -22,24 +22,38 @@ function getParamsAtPoint(lat, lng) {
   let k_ugv = 1.0;
   let k_oopr = 1.0;
 
-  // Проверка почв
+  // Проверка почв с использованием Turf.js
   if (soilLayer) {
+    soil = "Не определён";
+    k_soil = 1.0;
     soilLayer.eachLayer(layer => {
-      if (layer instanceof L.Polygon && layer.getBounds().contains(point)) {
-        const props = layer.feature.properties;
-        soil = props.soil_type;
-        k_soil = props.K_soil || 1.0;
+      if (layer instanceof L.Polygon) {
+        const poly = layer.toGeoJSON(); // Преобразуем в GeoJSON
+        const pointGeo = turf.point([lng, lat]); // Внимание: [долгота, широта]!
+        if (turf.booleanPointInPolygon(pointGeo, poly)) {
+          const props = layer.feature.properties;
+          soil = props.soil_type || "Не указан";
+          k_soil = parseFloat(props.K_soil) || 1.0;
+          return false; // остановить перебор (если не нужно пересечение)
+        }
       }
     });
   }
 
   // Проверка УГВ
   if (ugvLayer) {
+    ugv = "Не определён";
+    k_ugv = 1.0;
     ugvLayer.eachLayer(layer => {
-      if (layer instanceof L.Polygon && layer.getBounds().contains(point)) {
-        const props = layer.feature.properties;
-        ugv = props.ugv_class;
-        k_ugv = props.k_ugv || 1.0;
+      if (layer instanceof L.Polygon) {
+        const poly = layer.toGeoJSON();
+        const pointGeo = turf.point([lng, lat]);
+        if (turf.booleanPointInPolygon(pointGeo, poly)) {
+          const props = layer.feature.properties;
+          ugv = props.ugv_class || "Не указан";
+          k_ugv = parseFloat(props.k_ugv) || 1.0;
+          return false;
+        }
       }
     });
   }
