@@ -68,7 +68,7 @@ function handleLayerClick(lat, lng, layerType, properties) {
 
 // === ЗАГРУЗКА СЛОЁВ ===
 Promise.all([
-  fetch('soil_spb_lo6.geojson').then(r => r.json()),
+  fetch('soil_spb_lo.geojson').then(r => r.json()),
   fetch('ugv_spb_lo.geojson').then(r => r.json()),
   fetch('oopr_spb_lo.geojson').then(r => r.json())
 ])
