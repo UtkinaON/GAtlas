@@ -103,8 +103,9 @@ Promise.all([
 
   // Добавляем слои на карту
   soilLayer.addTo(map);
-  ugvLayer.addTo(map);
-  ooprLayer.addTo(map);
+ // пока отключила
+ // ugvLayer.addTo(map);
+ // ooprLayer.addTo(map);
 
   // Контроль слоёв
   const overlays = {
