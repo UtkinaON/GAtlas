@@ -34,7 +34,7 @@ function handleLayerClick(lat, lng, layerType, properties) {
 
 	  // Заполняем параметры в зависимости от слоя
 	  if (layerType === 'soil') {
-		params.soil = properties.soil_type || "Не указан";
+		params.soil = String(properties.soil_type || "Не указан");
 		params.k_soil = parseFloat(properties.K_soil) || 1.0;
 		if (params.soil === "Торфяник") params.ph = "4.7";
 		else if (params.soil === "Суглинок") params.ph = "6.5";
