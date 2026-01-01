@@ -14,46 +14,53 @@ let ooprLayer = null;
 
 // === ФУНКЦИЯ: определение параметров по клику НА ЛЮБОМ СЛОЕ ===
 function handleLayerClick(lat, lng, layerType, properties) {
-  // Удаляем предыдущий маркер
-  if (window.currentMarker) map.removeLayer(window.currentMarker);
-  window.currentMarker = L.marker([lat, lng]).addTo(map);
+  try{
+	  
+	  // Удаляем предыдущий маркер
+	  if (window.currentMarker) map.removeLayer(window.currentMarker);
+	  window.currentMarker = L.marker([lat, lng]).addTo(map);
 
-  // Начальные значения
-  const params = {
-    soil: "Не определён",
-    ugws: "Не определён",
-    ph: "7.0",
-    distanceToOOP: "Не определён",
-    load: "Сельская местность",
-    k_soil: 1.0,
-    k_ugv: 1.0,
-    k_oopr: 1.0
-  };
+	  // Начальные значения
+	  const params = {
+		soil: "Не определён",
+		ugws: "Не определён",
+		ph: "7.0",
+		distanceToOOP: "Не определён",
+		load: "Сельская местность",
+		k_soil: 1.0,
+		k_ugv: 1.0,
+		k_oopr: 1.0
+	  };
 
-  // Заполняем параметры в зависимости от слоя
-  if (layerType === 'soil') {
-    params.soil = properties.soil_type || "Не указан";
-    params.k_soil = parseFloat(properties.K_soil) || 1.0;
-    if (params.soil === "Торфяник") params.ph = "4.7";
-    else if (params.soil === "Суглинок") params.ph = "6.5";
-    else if (params.soil.includes("Песок")) params.ph = "7.2";
-  }
-  if (layerType === 'ugv') {
-    params.ugws = properties.ugv_class || "Не указан";
-    params.k_ugv = parseFloat(properties.k_ugv) || 1.0;
-  }
-  if (layerType === 'oopr') {
-    params.distanceToOOP = properties.zone_type || "Не указана";
-    params.k_oopr = parseFloat(properties.k_oopr) || 1.0;
-  }
+	  // Заполняем параметры в зависимости от слоя
+	  if (layerType === 'soil') {
+		params.soil = properties.soil_type || "Не указан";
+		params.k_soil = parseFloat(properties.K_soil) || 1.0;
+		if (params.soil === "Торфяник") params.ph = "4.7";
+		else if (params.soil === "Суглинок") params.ph = "6.5";
+		else if (params.soil.includes("Песок")) params.ph = "7.2";
+	  }
+	  if (layerType === 'ugv') {
+		params.ugws = properties.ugv_class || "Не указан";
+		params.k_ugv = parseFloat(properties.k_ugv) || 1.0;
+	  }
+	  if (layerType === 'oopr') {
+		params.distanceToOOP = properties.zone_type || "Не указана";
+		params.k_oopr = parseFloat(properties.k_oopr) || 1.0;
+	  }
 
-  // Обновляем боковую панель
-  updateSidebar(lat, lng, params);
+	  // Обновляем боковую панель
+	  updateSidebar(lat, lng, params);
+	
+  } catch (err) {
+    console.error("Ошибка в handleLayerClick:", err);
+    alert("Ошибка при обработке клика: " + err.message);
+  }	
 }
 
 // === ЗАГРУЗКА СЛОЁВ ===
 Promise.all([
-  fetch('soil_spb_lo5.geojson').then(r => r.json()),
+  fetch('soil_spb_lo4.geojson').then(r => r.json()),
   fetch('ugv_spb_lo.geojson').then(r => r.json()),
   fetch('oopr_spb_lo.geojson').then(r => r.json())
 ])
@@ -128,7 +135,7 @@ Promise.all([
 function updateSidebar(lat, lng, params) {
   const infoDiv = document.getElementById('info');
   infoDiv.innerHTML = `
-    <p><strong>Координаты5:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
+    <p><strong>Координаты:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
     <h3>Параметры местности</h3>
     <p><strong>Тип грунта:</strong> ${params.soil}</p>
     <p><strong>УГВ:</strong> ${params.ugws}</p>
