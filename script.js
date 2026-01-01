@@ -34,11 +34,19 @@ function handleLayerClick(lat, lng, layerType, properties) {
 
 	  // Заполняем параметры в зависимости от слоя
 	  if (layerType === 'soil') {
-		params.soil = String(properties.soil_type || "Не указан");
+		const rawSoil = properties.soil_type;
+		params.soil = String(rawSoil || "Не указан");
+
+		// Устанавливаем pH и k_soil по значению soil_type
+		if (params.soil === "Торфяник" || params.soil === "2") {
+			params.ph = "4.7";
+		} else if (params.soil === "Суглинок" || params.soil === "1") {
+			params.ph = "6.5";
+		} else if (params.soil.includes("Песок") || params.soil.includes("супесь") || params.soil === "0") {
+			params.ph = "7.2";
+		}
+
 		params.k_soil = parseFloat(properties.K_soil) || 1.0;
-		if (params.soil === "Торфяник") params.ph = "4.7";
-		else if (params.soil === "Суглинок") params.ph = "6.5";
-		else if (params.soil.includes("Песок")) params.ph = "7.2";
 	  }
 	  if (layerType === 'ugv') {
 		params.ugws = properties.ugv_class || "Не указан";
