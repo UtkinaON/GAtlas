@@ -53,7 +53,7 @@ function handleLayerClick(lat, lng, layerType, properties) {
 
 // === ЗАГРУЗКА СЛОЁВ ===
 Promise.all([
-  fetch('soil_spb_lo4.geojson').then(r => r.json()),
+  fetch('soil_spb_lo5.geojson').then(r => r.json()),
   fetch('ugv_spb_lo.geojson').then(r => r.json()),
   fetch('oopr_spb_lo.geojson').then(r => r.json())
 ])
@@ -127,7 +127,7 @@ Promise.all([
 function updateSidebar(lat, lng, params) {
   const infoDiv = document.getElementById('info');
   infoDiv.innerHTML = `
-    <p><strong>Координаты:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
+    <p><strong>Координаты5:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
     <h3>Параметры местности</h3>
     <p><strong>Тип грунта:</strong> ${params.soil}</p>
     <p><strong>УГВ:</strong> ${params.ugws}</p>
@@ -146,7 +146,7 @@ function calculateGII(k_soil, k_ugv, k_oopr) {
   const GII = (GII0_PND * Kkr).toFixed(2);
 
   const message = `
-    <strong>Результат расчёта4:</strong><br>
+    <strong>Результат расчёта:</strong><br>
     GII₀ (ПНД) = 2.12<br>
     K<sub>кр</sub> = ${k_soil} × ${k_ugv} × ${k_oopr} = ${Kkr.toFixed(2)}<br>
     <b>GII = ${GII}</b><br><br>
