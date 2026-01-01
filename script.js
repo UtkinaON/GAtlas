@@ -146,7 +146,7 @@ function calculateGII(k_soil, k_ugv, k_oopr) {
   const GII = (GII0_PND * Kkr).toFixed(2);
 
   const message = `
-    <strong>Результат расчёта:</strong><br>
+    <strong>Результат расчёта4:</strong><br>
     GII₀ (ПНД) = 2.12<br>
     K<sub>кр</sub> = ${k_soil} × ${k_ugv} × ${k_oopr} = ${Kkr.toFixed(2)}<br>
     <b>GII = ${GII}</b><br><br>
