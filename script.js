@@ -28,7 +28,7 @@ function handleLayerClick(lat, lng, properties) {
       koopr: 1.0   // Заглушка (удалить если не нужно)
     };
 
-    // Логика pH по типу почвы (адаптировано из оригинала)
+    // Логика pH по типу почвы 
     const soilNum = parseInt(properties.fid || properties.soil_type || 0);
     if (soilNum === 3 || soilNum === 2) params.ph = 4.7;  // Глина/тяж суглинок
     else if (soilNum === 1) params.ph = 6.5;              // Лёг суглинок
@@ -80,7 +80,7 @@ fetch('soil_spb_lo.geojson')
     document.getElementById('info').innerHTML = '<p style="color:red;">Ошибка загрузки soil_spb_lo.geojson</p>';
   });
 
-// Sidebar (оставляем как есть)
+// Sidebar 
 function updateSidebar(lat, lng, params) {
   const infoDiv = document.getElementById('info');
   infoDiv.innerHTML = `
@@ -96,7 +96,7 @@ function updateSidebar(lat, lng, params) {
 }
 
 function calculateGII(ksoil, kugv, koopr) {
-  // Оставляем вашу оригинальную логику GII
+  // логика GII
   const Kkr = ksoil * kugv * koopr;
   const GII0PND = 2.12;
   const GII = GII0PND * Kkr.toFixed(2);
