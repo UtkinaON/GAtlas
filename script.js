@@ -69,16 +69,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
           // Стиль с повышенной прозрачностью
           if (val === 3 || /Глина/i.test(cls)) {
-            return { fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.3 };
+            return { fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.2 };
           }
           if (val === 2 || /Тяжёлый суглинок/i.test(cls)) {
-            return { fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.3 };
+            return { fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.2 };
           }
           if (val === 1 || /Лёгкий суглинок/i.test(cls)) {
-            return { fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.3 };
+            return { fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.2 };
           }
           // "Супесь" и по умолчанию
-          return { fillColor: '#90EE90', color: '#228B22', weight: 1, fillOpacity: 0.3 };
+          return { fillColor: '#90EE90', color: '#228B22', weight: 1, fillOpacity: 0.2 };
         },
         onEachFeature: function (feature, layer) {
           layer.on('click', e => {
