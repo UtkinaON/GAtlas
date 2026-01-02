@@ -2,7 +2,7 @@
 let currentMarker = null;
 
 // Инициализация после загрузки DOM
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   const map = L.map('map').setView([60, 30], 8);
   const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -16,17 +16,41 @@ document.addEventListener('DOMContentLoaded', function() {
     if (currentMarker) map.removeLayer(currentMarker);
     currentMarker = L.marker([lat, lng]).addTo(map);
 
-    const soilNum = parseInt(properties.fid || properties.soil_type || 0);
-    const soilClass = properties.soil_textural_class || 'Неизвестно';
-    //const ph = properties.ph || 7.0;
-    //const oc = properties['organic_carbon_%'] || 0;
-    const ph = (properties.ph || 0) === -9999 ? 'N/A (малый полигон)' : (properties.ph || 7.0);
-	const oc = (properties['organic_carbon_%'] || 0) === -9999 ? 'N/A (малый полигон)' : (properties['organic_carbon_%'] || 0);
-	
-	const area = properties.area_m2 || 0;
-    const ksoil = ph < 5.5 ? 0.8 : 1.0;
+    // Безопасное извлечение значений с заменой "-999.9" и пустых значений
+    const soilClass = (properties.soil_textural_class || properties.soil_type || '').trim() || '—';
+    const phRaw = properties.ph;
+    const ocRaw = properties['organic_carbon_%'];
+    
+    // Функция для форматирования: замена -999.9 и некорректных значений на "—"
+    const formatValue = (val) => {
+      if (val === undefined || val === null || val === -999.9 || val === '-999.9') {
+        return '—';
+      }
+      if (typeof val === 'number') {
+        return val.toFixed(1);
+      }
+      return String(val).trim() || '—';
+    };
 
-    const params = { soil: soilClass, ph: ph, organic_carbon: oc, area: area, ksoil: ksoil, kugv: 1.0, koopr: 1.0 };
+    const ph = formatValue(phRaw);
+    const oc = formatValue(ocRaw);
+    const area = properties.area_m2 ? (properties.area_m2 / 10000).toFixed(2) + ' га' : '—';
+
+    // Расчёт K_soil (пример, можно расширить)
+    let ksoil = 1.0;
+    if (ph !== '—' && !isNaN(ph) && parseFloat(ph) < 5.5) {
+      ksoil = 1.4; // или ваша логика
+    }
+
+    const params = {
+      soil: soilClass,
+      ph: ph,
+      organic_carbon: oc,
+      area: area,
+      ksoil: ksoil,
+      kugv: 1.0,
+      koopr: 1.0
+    };
 
     updateSidebar(lat, lng, params);
   }
@@ -39,27 +63,43 @@ document.addEventListener('DOMContentLoaded', function() {
     })
     .then(soilData => {
       soilLayer = L.geoJSON(soilData, {
-        style: function(feature) {
+        style: function (feature) {
           const val = parseInt(feature.properties.fid || feature.properties.soil_type || 0);
-          const cls = feature.properties.soil_textural_class;
-          if (val === 3 || cls === 'Глина') return {fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.4};
-          if (val === 2 || cls?.includes('Тяж')) return {fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.4};
-          if (val === 1 || cls?.includes('Лёг')) return {fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.4};
-          return {fillColor: '#90EE90', color: '#228B22', weight: 1, fillOpacity: 0.4};
+          const cls = (feature.properties.soil_textural_class || '').trim();
+
+          // Стиль с повышенной прозрачностью
+          if (val === 3 || /Глина/i.test(cls)) {
+            return { fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.3 };
+          }
+          if (val === 2 || /Тяжёлый суглинок/i.test(cls)) {
+            return { fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.3 };
+          }
+          if (val === 1 || /Лёгкий суглинок/i.test(cls)) {
+            return { fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.3 };
+          }
+          // "Супесь" и по умолчанию
+          return { fillColor: '#90EE90', color: '#228B22', weight: 1, fillOpacity: 0.3 };
         },
-        onEachFeature: function(feature, layer) {
-          layer.on('click', e => handleLayerClick(e.latlng.lat, e.latlng.lng, feature.properties));
+        onEachFeature: function (feature, layer) {
+          layer.on('click', e => {
+            handleLayerClick(e.latlng.lat, e.latlng.lng, feature.properties);
+          });
+
           const p = feature.properties;
-          layer.bindPopup(
-            `<b>Тип почвы:</b> ${p.soil_textural_class || p.soil_type || 'N/A'}<br>` +
-            `<b>pH:</b> ${p.ph || 'N/A'}<br>` +
-            `<b>OC (%):</b> ${p['organic_carbon_%'] || 'N/A'}<br>` +
-            `<b>Площадь:</b> ${p.area_m2 ? (p.area_m2/10000).toFixed(2) + ' га' : 'N/A'}`
-          );
+          const phDisplay = (p.ph === -999.9 || p.ph === '-999.9' || p.ph === undefined) ? '—' : p.ph;
+          const ocDisplay = (p['organic_carbon_%'] === -999.9 || p['organic_carbon_%'] === '-999.9' || p['organic_carbon_%'] === undefined) ? '—' : p['organic_carbon_%'];
+
+          layer.bindPopup(`
+            <b>Тип почвы:</b> ${p.soil_textural_class || p.soil_type || '—'}<br>
+            <b>pH:</b> ${phDisplay === '—' ? '—' : Number(phDisplay).toFixed(1)}<br>
+            <b>OC (%):</b> ${ocDisplay === '—' ? '—' : Number(ocDisplay).toFixed(1)}<br>
+            <b>Площадь:</b> ${p.area_m2 ? (p.area_m2 / 10000).toFixed(2) + ' га' : '—'}
+          `);
         }
       });
+
       soilLayer.addTo(map);
-      L.control.layers({}, {'Почвы СПб/ЛО': soilLayer}).addTo(map);
+      L.control.layers({}, { 'Почвы СПб / ЛО': soilLayer }).addTo(map);
       console.log('Слой загружен успешно:', soilData.features.length, 'полигонов');
     })
     .catch(err => {
@@ -73,33 +113,20 @@ function updateSidebar(lat, lng, params) {
   const infoDiv = document.getElementById('info');
   infoDiv.innerHTML = `
     <p><strong>Координаты:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
-    <h3>Параметры почвы</h3>
-    <p><strong>Тип:</strong> ${params.soil}</p>
-    <p><strong>pH:</strong> ${params.ph.toFixed(1)}</p>
-    <p><strong>OC (%):</strong> ${params.organic_carbon.toFixed(1)}</p>
-    <p><strong>Площадь:</strong> ${(params.area/10000).toFixed(2)} га</p>
-    <br><button onclick="calculateGII(${params.ksoil},1.0,1.0)">GII</button>
+    <h3>Параметры местности</h3>
+    <p><strong>Тип грунта:</strong> ${params.soil}</p>
+    <p><strong>pH:</strong> ${params.ph}</p>
+    <p><strong>Органический углерод (%):</strong> ${params.organic_carbon}</p>
+    <p><strong>Площадь:</strong> ${params.area}</p>
+    <br>
+    <button onclick="calculateGII(${params.ksoil}, ${params.kugv}, ${params.koopr})">Рассчитать GII</button>
   `;
 }
 
-function calculateGII(ksoil, kugv, koopr) {
-  const Kkr = ksoil * kugv * koopr;
-  const GII0PND = 2.12;
-  const GII = (GII0PND * Kkr).toFixed(2);
-  const risk = getRiskClass(GII);
-  document.getElementById('info').innerHTML += `
-    <div style="margin-top:15px;padding:10px;background:#fff8e1;border-left:4px solid #ffa000;">
-      <strong>GII = ${GII}</strong><br>
-      K<sub>кр</sub> = ${Kkr.toFixed(2)}<br>
-      <em>${risk}</em>
-    </div>
-  `;
-}
-
-function getRiskClass(gii) {
-  if (gii <= 2.0) return 'I — Низкий риск';
-  if (gii <= 4.0) return 'II — Низкий';
-  if (gii <= 6.0) return 'III — Средний';
-  if (gii <= 8.0) return 'IV — Высокий';
-  return 'V — Критический';
+// Пример расчёта GII
+function calculateGII(k_soil, k_ugv, k_oopr) {
+  const GII0_PND = 2.12;
+  const Kkr = k_soil * k_ugv * k_oopr;
+  const GII = (GII0_PND * Kkr).toFixed(2);
+  alert(`GII = ${GII}`);
 }
