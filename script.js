@@ -18,9 +18,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const soilNum = parseInt(properties.fid || properties.soil_type || 0);
     const soilClass = properties.soil_textural_class || 'Неизвестно';
-    const ph = properties.ph || 7.0;
-    const oc = properties['organic_carbon_%'] || 0;
-    const area = properties.area_m2 || 0;
+    //const ph = properties.ph || 7.0;
+    //const oc = properties['organic_carbon_%'] || 0;
+    const ph = (properties.ph || 0) === -9999 ? 'N/A (малый полигон)' : (properties.ph || 7.0);
+	const oc = (properties['organic_carbon_%'] || 0) === -9999 ? 'N/A (малый полигон)' : (properties['organic_carbon_%'] || 0);
+	
+	const area = properties.area_m2 || 0;
     const ksoil = ph < 5.5 ? 0.8 : 1.0;
 
     const params = { soil: soilClass, ph: ph, organic_carbon: oc, area: area, ksoil: ksoil, kugv: 1.0, koopr: 1.0 };
@@ -39,10 +42,10 @@ document.addEventListener('DOMContentLoaded', function() {
         style: function(feature) {
           const val = parseInt(feature.properties.fid || feature.properties.soil_type || 0);
           const cls = feature.properties.soil_textural_class;
-          if (val === 3 || cls === 'Глина') return {fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.6};
-          if (val === 2 || cls?.includes('Тяж')) return {fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.6};
-          if (val === 1 || cls?.includes('Лёг')) return {fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.6};
-          return {fillColor: '#90EE90', color: '#228B22', weight: 1, fillOpacity: 0.6};
+          if (val === 3 || cls === 'Глина') return {fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.4};
+          if (val === 2 || cls?.includes('Тяж')) return {fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.4};
+          if (val === 1 || cls?.includes('Лёг')) return {fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.4};
+          return {fillColor: '#90EE90', color: '#228B22', weight: 1, fillOpacity: 0.4};
         },
         onEachFeature: function(feature, layer) {
           layer.on('click', e => handleLayerClick(e.latlng.lat, e.latlng.lng, feature.properties));
