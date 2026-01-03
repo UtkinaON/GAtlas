@@ -22,20 +22,21 @@ function handleLayerClick(lat, lng, properties) {
   if (currentMarker) map.removeLayer(currentMarker);
   currentMarker = L.marker([lat, lng]).addTo(map);
 
-  const soilNum = parseInt(properties.soil_type || properties.fid || 0);
-  const soilClassRaw = (properties.soil_textural_class || '').trim();
+  // ✅ ПРОСТО: проверяем наличие поля is_water или soil_type === -1
+  const isWater = properties.is_water === true || properties.is_water === 'true' || 
+                  parseInt(properties.soil_type || 0) === -1;
   
-  // ПРОВЕРЯЕМ ВОДУ ПО ПРИОРИТЕТУ:
-  let soilClass = 'Супесь';  // дефолт
-  
-  if (soilNum === -1 || soilClassRaw.includes('Водная') || soilClassRaw.includes('Вода')) {
+  let soilClass;
+  if (isWater) {
     soilClass = 'Водная поверхность';
-  } else if (soilNum === 3 || soilClassRaw.includes('Глина')) {
-    soilClass = 'Глина';
-  } else if (soilNum === 2 || soilClassRaw.includes('Тяжёлый суглинок')) {
-    soilClass = 'Тяжёлый суглинок';
-  } else if (soilNum === 1 || soilClassRaw.includes('Лёгкий суглинок')) {
-    soilClass = 'Лёгкий суглинок';
+  } else {
+    const soilClassRaw = (properties.soil_textural_class || '').trim();
+    const soilNum = parseInt(properties.soil_type || 0);
+    
+    if (soilNum === 3 || soilClassRaw.includes('Глина')) soilClass = 'Глина';
+    else if (soilNum === 2 || soilClassRaw.includes('Тяжёлый суглинок')) soilClass = 'Тяжёлый суглинок';
+    else if (soilNum === 1 || soilClassRaw.includes('Лёгкий суглинок')) soilClass = 'Лёгкий суглинок';
+    else soilClass = 'Супесь';
   }
 
   const ph = formatValue(properties.ph);
