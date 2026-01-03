@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function () {
     })
     .catch(err => {
       console.error('Ошибка:', err);
-      document.getElementById('info').innerHTML = `<p style="color:red;">${err.message}<br>Проверьте файл soil_spb_lo_final_with_water.geojson</p>`;
+      document.getElementById('info').innerHTML = `<p style="color:red;">${err.message}<br>Проверьте файл soil_spb_lo.geojson</p>`;
     });
 });
 
