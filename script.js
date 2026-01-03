@@ -36,12 +36,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const oc = formatValue(ocRaw);
     const area = properties.area_m2 ? (properties.area_m2 / 10000).toFixed(2) + ' га' : '—';
 
-    // Ksoil по типу почвы
+    // Расчёт K_soil (пример, можно расширить)
     let ksoil = 1.0;
-    if (isWater) ksoil = 0.5;
-    else if (soilClass === 'Глина') ksoil = 1.3;
-    else if (soilClass === 'Тяжёлый суглинок') ksoil = 1.1;
-    else if (soilClass === 'Лёгкий суглинок') ksoil = 1.05;
+    if (ph !== '—' && !isNaN(ph) && parseFloat(ph) < 5.5) {
+      ksoil = 1.4; // или ваша логика
+    }
 
     const params = {
       soil: soilClass,
@@ -56,43 +55,10 @@ document.addEventListener('DOMContentLoaded', function () {
     updateSidebar(lat, lng, params);
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Обновление боковой панели
-function updateSidebar(lat, lng, params) {
-  const infoDiv = document.getElementById('info');
-  infoDiv.innerHTML = `
-      <p><strong>📍 Координаты:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
-      <h3>🌱 Параметры почвы</h3>
-      <p><strong>Тип:</strong> ${params.soil}</p>
-      <p><strong>pH:</strong> ${params.ph}</p>
-      <p><strong>OC (%):</strong> ${params.organic_carbon}</p>
-      <p><strong>Площадь:</strong> ${params.area}</p>
-      <p><strong>K<sub>soil</sub>:</strong> ${params.ksoil.toFixed(2)}</p>
-      <br>
-      <button class="gii-btn" onclick="calculateGII(${params.ksoil}, ${params.kugv}, ${params.koopr})">
-        🚀 Рассчитать GII
-      </button>
-    `;
-}
-
   // Загрузка GeoJSON
   fetch('soil_spb_lo.geojson')
     .then(response => {
-      if (!response.ok) throw new Error(`Файл не найден: ${response.status}`);
+      if (!response.ok) throw new Error('Файл soil_spb_lo.geojson не найден (404)');
       return response.json();
     })
     .then(soilData => {
@@ -142,29 +108,25 @@ function updateSidebar(lat, lng, params) {
     });
 });
 
-
-// Глобальные функции для кнопки GII
-function calculateGII(ksoil, kugv, koopr) {
-  const GII0_PND = 2.12;
-  const Kkr = ksoil * kugv * koopr;
-  const GII = (GII0_PND * Kkr).toFixed(2);
-  const risk = getRiskClass(parseFloat(GII));
-
-  document.getElementById('info').innerHTML += `
-    <div style="margin-top:15px;padding:15px;background:#E3F2FD;border-left:5px solid #2196F3;border-radius:4px;">
-      <strong>🎯 Результат GII</strong><br>
-      GII₀(ПНД) = 2.12<br>
-      K<sub>кр</sub> = ${(ksoil*kugv*koopr).toFixed(2)}<br>
-      <b style="color:#D32F2F;font-size:1.2em;">GII = ${GII}</b><br><br>
-      <em style="color:#1976D2;">${risk}</em>
-    </div>
+// Sidebar
+function updateSidebar(lat, lng, params) {
+  const infoDiv = document.getElementById('info');
+  infoDiv.innerHTML = `
+    <p><strong>Координаты:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
+    <h3>Параметры местности</h3>
+    <p><strong>Тип грунта:</strong> ${params.soil}</p>
+    <p><strong>pH:</strong> ${params.ph}</p>
+    <p><strong>Органический углерод (%):</strong> ${params.organic_carbon}</p>
+    <p><strong>Площадь:</strong> ${params.area}</p>
+    <br>
+    <button onclick="calculateGII(${params.ksoil}, ${params.kugv}, ${params.koopr})">Рассчитать GII</button>
   `;
 }
 
-function getRiskClass(gii) {
-  if (gii <= 2.0) return "I — Очень низкий риск";
-  if (gii <= 4.0) return "II — Низкий риск";
-  if (gii <= 6.0) return "III — Умеренный риск";
-  if (gii <= 8.0) return "IV — Высокий риск";
-  return "V — Крайне высокий риск";
+// Пример расчёта GII
+function calculateGII(k_soil, k_ugv, k_oopr) {
+  const GII0_PND = 2.12;
+  const Kkr = k_soil * k_ugv * k_oopr;
+  const GII = (GII0_PND * Kkr).toFixed(2);
+  alert(`GII = ${GII}`);
 }
