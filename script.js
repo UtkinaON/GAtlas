@@ -23,8 +23,6 @@ document.addEventListener('DOMContentLoaded', function () {
   // === ЗАГРУЗКА ТРЁХ СЛОЁВ ===
   Promise.all([
     fetch('soils_spb_lo.geojson').then(r => r.json()),
-    fetch('ugv_spb_lo.geojson').then(r => r.json()),
-    fetch('oopr_spb_lo.geojson').then(r => r.json())
   ]).then(([soilData, ugvData, ooprData]) => {
 
     // --- Слой почв (с водой!) ---
