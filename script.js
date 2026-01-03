@@ -17,33 +17,48 @@ document.addEventListener('DOMContentLoaded', function () {
     return isNaN(num) ? '—' : num.toFixed(1);
   };
 
-  // Функция клика
-  function handleLayerClick(lat, lng, properties) {
-    if (currentMarker) map.removeLayer(currentMarker);
-    currentMarker = L.marker([lat, lng]).addTo(map);
+ // Функция клика (ИСПРАВЛЕНА для воды)
+function handleLayerClick(lat, lng, properties) {
+  if (currentMarker) map.removeLayer(currentMarker);
+  currentMarker = L.marker([lat, lng]).addTo(map);
 
-    const soilClass = (properties.soil_textural_class || '—').trim();
-    const ph = formatValue(properties.ph);
-    const oc = formatValue(properties['organic_carbon_%']);
-    const area = properties.area_m2 ? (parseFloat(properties.area_m2) / 10000).toFixed(2) + ' га' : '—';
-
-    // Умный расчёт ksoil по типу почвы + pH
-    let ksoil = 1.0;
-    const phNum = parseFloat(properties.ph);
-    
-    if (/Водная|Вода/.test(soilClass)) {
-      ksoil = 0.5;  // Вода хуже для ГИИ
-    } else if (/Глина/.test(soilClass)) {
-      ksoil = 1.3;
-    } else if (/Тяжёлый суглинок/.test(soilClass)) {
-      ksoil = 1.1;
-    } else if (phNum && phNum < 5.5) {
-      ksoil = 1.4;  // Кислые почвы
-    }
-
-    const params = { soil: soilClass, ph, organic_carbon: oc, area, ksoil, kugv: 1.0, koopr: 1.0 };
-    updateSidebar(lat, lng, params);
+  const soilNum = parseInt(properties.soil_type || properties.fid || 0);
+  const soilClassRaw = (properties.soil_textural_class || '').trim();
+  
+  // ПРОВЕРЯЕМ ВОДУ ПО ПРИОРИТЕТУ:
+  let soilClass = 'Супесь';  // дефолт
+  
+  if (soilNum === -1 || soilClassRaw.includes('Водная') || soilClassRaw.includes('Вода')) {
+    soilClass = 'Водная поверхность';
+  } else if (soilNum === 3 || soilClassRaw.includes('Глина')) {
+    soilClass = 'Глина';
+  } else if (soilNum === 2 || soilClassRaw.includes('Тяжёлый суглинок')) {
+    soilClass = 'Тяжёлый суглинок';
+  } else if (soilNum === 1 || soilClassRaw.includes('Лёгкий суглинок')) {
+    soilClass = 'Лёгкий суглинок';
   }
+
+  const ph = formatValue(properties.ph);
+  const oc = formatValue(properties['organic_carbon_%']);
+  const area = properties.area_m2 ? (parseFloat(properties.area_m2) / 10000).toFixed(2) + ' га' : '—';
+
+  // Ksoil для воды = 0.5
+  let ksoil = 1.0;
+  if (soilClass === 'Водная поверхность') {
+    ksoil = 0.5;
+  } else if (soilClass === 'Глина') {
+    ksoil = 1.3;
+  } else if (soilClass === 'Тяжёлый суглинок') {
+    ksoil = 1.1;
+  } else if (ph !== '—') {
+    const phNum = parseFloat(properties.ph);
+    if (phNum && phNum < 5.5) ksoil = 1.4;
+  }
+
+  const params = { soil: soilClass, ph, organic_carbon: oc, area, ksoil, kugv: 1.0, koopr: 1.0 };
+  updateSidebar(lat, lng, params);
+}
+
 
   // Загрузка GeoJSON
   fetch('soil_spb_lo.geojson')
@@ -53,14 +68,25 @@ document.addEventListener('DOMContentLoaded', function () {
     })
     .then(soilData => {
       soilLayer = L.geoJSON(soilData, {
-        style: function (feature) {
-          const cls = (feature.properties.soil_textural_class || '').trim();
-          if (/Водная|Вода/.test(cls)) return { fillColor: '#1e88e5', color: '#0d47a1', weight: 2, fillOpacity: 0.4 };
-          if (/Глина/.test(cls)) return { fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.6 };
-          if (/Тяжёлый суглинок/.test(cls)) return { fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.6 };
-          if (/Лёгкий суглинок/.test(cls)) return { fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.6 };
-          return { fillColor: '#90EE90', color: '#2E7D32', weight: 1, fillOpacity: 0.6 };
-        },
+		style: function (feature) {
+		  const soilNum = parseInt(feature.properties.soil_type || feature.properties.fid || 0);
+		  const cls = (feature.properties.soil_textural_class || '').trim();
+  		  // ВОДА по приоритету
+		  if (soilNum === -1 || /Водная|Вода/.test(cls)) {
+			return { fillColor: '#1e88e5', color: '#0d47a1', weight: 2, fillOpacity: 0.4 };
+		  }
+		  if (soilNum === 3 || /Глина/.test(cls)) {
+			return { fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.6 };
+		  }
+		  if (soilNum === 2 || /Тяжёлый суглинок/.test(cls)) {
+			return { fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.6 };
+		  }
+		  if (soilNum === 1 || /Лёгкий суглинок/.test(cls)) {
+			return { fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.6 };
+		  }
+		  return { fillColor: '#90EE90', color: '#2E7D32', weight: 1, fillOpacity: 0.6 };
+		},
+
         onEachFeature: function (feature, layer) {
           layer.on('click', e => handleLayerClick(e.latlng.lat, e.latlng.lng, feature.properties));
           
