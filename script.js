@@ -73,18 +73,18 @@ function handleLayerClick(lat, lng, properties) {
 		  const cls = (feature.properties.soil_textural_class || '').trim();
   		  // ВОДА по приоритету
 		  if (soilNum === -1 || /Водная|Вода/.test(cls)) {
-			return { fillColor: '#1e88e5', color: '#0d47a1', weight: 2, fillOpacity: 0.4 };
+			return { fillColor: '#1e88e5', color: '#0d47a1', weight: 2, fillOpacity: 0.2 };
 		  }
 		  if (soilNum === 3 || /Глина/.test(cls)) {
-			return { fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.6 };
+			return { fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.4 };
 		  }
 		  if (soilNum === 2 || /Тяжёлый суглинок/.test(cls)) {
-			return { fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.6 };
+			return { fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.4 };
 		  }
 		  if (soilNum === 1 || /Лёгкий суглинок/.test(cls)) {
-			return { fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.6 };
+			return { fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.4 };
 		  }
-		  return { fillColor: '#90EE90', color: '#2E7D32', weight: 1, fillOpacity: 0.6 };
+		  return { fillColor: '#90EE90', color: '#2E7D32', weight: 1, fillOpacity: 0.4 };
 		},
 
         onEachFeature: function (feature, layer) {
