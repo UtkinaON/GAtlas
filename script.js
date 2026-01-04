@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
           layer.bindPopup(`
             <b>Тип:</b> ${p.soil_textural_class || '—'}<br>
             <b>pH:</b> ${formatValue(p.ph)}<br>
-            <b>OC (%):</b> ${formatValue(p.organic_carbon_%)}<br>
+            <b>OC (%):</b> ${formatValue(p['organic_carbon_%'])}<br>
             <b>Площадь:</b> ${area}
           `);
         }
