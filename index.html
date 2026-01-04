@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
- <meta http-equiv="Content-Security-Policy" content="
-  default-src 'self' https: data: blob:;
-  script-src 'self' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net;
-  style-src 'self' 'unsafe-inline' https://unpkg.com;
-  connect-src 'self' https://*.tile.openstreetmap.org *.geojson;">
-
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self' https: data: blob:;
+    script-src 'self' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net;
+    style-src 'self' 'unsafe-inline' https://unpkg.com;
+    connect-src 'self' https://*.tile.openstreetmap.org *.geojson;">
+  
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Гео Атлас дренажных систем</title>
-  <!-- Ваш стиль -->
+  
+  <!-- ✅ ТОЛЬКО Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -24,13 +26,9 @@
     <div id="info">Выберите точку на карте</div>
   </div>
 
-  <!-- 1. Сначала подключаем Leaflet -->
+  <!-- ✅ Скрипты -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  
-  <!-- 2. Затем Turf.js (если используется) -->
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
-  
-  <!-- 3. И только потом — ваш скрипт -->
   <script src="script.js"></script>
 </body>
 </html>

@@ -4,7 +4,6 @@ let map = null;
 let soilLayer = null;
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Карта
   map = L.map('map').setView([60, 30], 8);
   
   const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -12,19 +11,16 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   osm.addTo(map);
 
-  // Функция форматирования
   function formatValue(val) {
     if (val === undefined || val === null || val === -9999 || val === '-9999') return '—';
     const num = parseFloat(val);
     return isNaN(num) ? '—' : num.toFixed(1);
   }
 
-  // Обработка клика
   function handleLayerClick(lat, lng, properties) {
     if (currentMarker) map.removeLayer(currentMarker);
     currentMarker = L.marker([lat, lng]).addTo(map);
 
-    // Проверка воды
     const soilTypeNum = parseInt(properties.soil_type || 0);
     const isWater = properties.is_water === true || 
                    properties.is_water === 'true' || 
@@ -52,29 +48,29 @@ document.addEventListener('DOMContentLoaded', function() {
     else if (soilClass === 'Тяжёлый суглинок') ksoil = 1.1;
     else if (soilClass === 'Лёгкий суглинок') ksoil = 1.05;
 
-    const params = { soil: soilClass, ph, organic_carbon: oc, area, ksoil, kugv: 1.0, koopr: 1.0 };
-    updateSidebar(lat, lng, params);
+    updateSidebar(lat, lng, soilClass, ph, oc, area, ksoil);
   }
 
-  // Боковая панель
-  function updateSidebar(lat, lng, params) {
+  function updateSidebar(lat, lng, soilClass, ph, oc, area, ksoil) {
     const infoDiv = document.getElementById('info');
     infoDiv.innerHTML = `
       <p><strong>📍 Координаты:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
       <h3>🌱 Параметры участка</h3>
-      <p><strong>Тип грунта:</strong> ${params.soil}</p>
-      <p><strong>pH:</strong> ${params.ph}</p>
-      <p><strong>OC (%):</strong> ${params.organic_carbon}</p>
-      <p><strong>Площадь:</strong> ${params.area}</p>
-      <p><strong>K<sub>soil</sub>:</strong> ${params.ksoil.toFixed(2)}</p>
+      <p><strong>Тип грунта:</strong> ${soilClass}</p>
+      <p><strong>pH:</strong> ${ph}</p>
+      <p><strong>OC (%):</strong> ${oc}</p>
+      <p><strong>Площадь:</strong> ${area}</p>
+      <p><strong>K<sub>soil</sub>:</strong> ${ksoil.toFixed(2)}</p>
       <br>
-      <button class="gii-btn" onclick="calculateGII(${params.ksoil}, ${params.kugv}, ${params.koopr})">
-        🚀 Рассчитать GII
-      </button>
+      <button id="giiBtn" class="gii-btn">🚀 Рассчитать GII</button>
     `;
+    
+    // ✅ Добавляем обработчик кнопки ПОСЛЕ создания HTML
+    document.getElementById('giiBtn').onclick = function() {
+      calculateGII(ksoil, 1.0, 1.0);
+    };
   }
 
-  // Загрузка GeoJSON
   fetch('soil_spb_lo_h2o_fixed.geojson')
     .then(response => {
       if (!response.ok) throw new Error(`Файл не найден (${response.status})`);
@@ -123,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       document.getElementById('info').innerHTML = `
         <p>✅ ${soilData.features.length} полигонов (${waterCount} водных)</p>
-        <p>🖱️ Кликните по полигону</p>
+        <p>🖱️ Кликните по полигону для информации</p>
       `;
     })
     .catch(err => {
@@ -139,7 +135,8 @@ function calculateGII(ksoil, kugv, koopr) {
   const GII = (GII0 * Kkr).toFixed(2);
   const risk = getRiskClass(parseFloat(GII));
   
-  document.getElementById('info').innerHTML += `
+  const infoDiv = document.getElementById('info');
+  infoDiv.innerHTML += `
     <div style="margin:15px 0;padding:15px;background:#E3F2FD;border-left:5px solid #2196F3;border-radius:4px;">
       <strong>🎯 GII = ${GII}</strong><br>
       K<sub>кр</sub> = ${(ksoil*kugv*koopr).toFixed(2)}<br>
