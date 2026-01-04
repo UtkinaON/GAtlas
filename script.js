@@ -3,8 +3,8 @@ let currentMarker = null;
 let map = null;
 let soilLayer = null;
 
-document.addEventListener('DOMContentLoaded', function () {
-  // Инициализация карты
+document.addEventListener('DOMContentLoaded', function() {
+  // Карта
   map = L.map('map').setView([60, 30], 8);
   
   const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -12,19 +12,19 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   osm.addTo(map);
 
-  // Универсальная функция форматирования
-  const formatValue = (val) => {
+  // Функция форматирования
+  function formatValue(val) {
     if (val === undefined || val === null || val === -9999 || val === '-9999') return '—';
     const num = parseFloat(val);
     return isNaN(num) ? '—' : num.toFixed(1);
-  };
+  }
 
-  // ✅ ФУНКЦИЯ КЛИКА (работает с водой И почвами)
+  // Обработка клика
   function handleLayerClick(lat, lng, properties) {
     if (currentMarker) map.removeLayer(currentMarker);
     currentMarker = L.marker([lat, lng]).addTo(map);
 
-    // ✅ ПРОВЕРКА ВОДЫ (3 надежных способа)
+    // Проверка воды
     const soilTypeNum = parseInt(properties.soil_type || 0);
     const isWater = properties.is_water === true || 
                    properties.is_water === 'true' || 
@@ -46,7 +46,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const oc = isWater ? '—' : formatValue(properties['organic_carbon_%']);
     const area = properties.area_m2 ? (parseFloat(properties.area_m2)/10000).toFixed(2) + ' га' : '—';
     
-    // ✅ Ksoil с учетом воды
     let ksoil = 1.0;
     if (isWater) ksoil = 0.5;
     else if (soilClass === 'Глина') ksoil = 1.3;
@@ -57,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function () {
     updateSidebar(lat, lng, params);
   }
 
-  // Обновление боковой панели
+  // Боковая панель
   function updateSidebar(lat, lng, params) {
     const infoDiv = document.getElementById('info');
     infoDiv.innerHTML = `
@@ -75,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
     `;
   }
 
-  // ✅ Загрузка GeoJSON
+  // Загрузка GeoJSON
   fetch('soil_spb_lo_h2o_fixed.geojson')
     .then(response => {
       if (!response.ok) throw new Error(`Файл не найден (${response.status})`);
@@ -84,7 +83,6 @@ document.addEventListener('DOMContentLoaded', function () {
     .then(soilData => {
       console.log('✅ Загружено:', soilData.features.length, 'полигонов');
       
-      // Подсчет водных
       const waterCount = soilData.features.filter(f => 
         f.properties.is_water || parseInt(f.properties.soil_type || 0) === -1
       ).length;
@@ -105,14 +103,17 @@ document.addEventListener('DOMContentLoaded', function () {
         },
 
         onEachFeature: function(feature, layer) {
-          layer.on('click', e => handleLayerClick(e.latlng.lat, e.latlng.lng, feature.properties));
+          layer.on('click', function(e) {
+            handleLayerClick(e.latlng.lat, e.latlng.lng, feature.properties);
+          });
           
           const p = feature.properties;
+          const area = p.area_m2 ? (parseFloat(p.area_m2)/10000).toFixed(2) + ' га' : '—';
           layer.bindPopup(`
             <b>Тип:</b> ${p.soil_textural_class || '—'}<br>
             <b>pH:</b> ${formatValue(p.ph)}<br>
             <b>OC (%):</b> ${formatValue(p.organic_carbon_%)}<br>
-            <b>Площадь:</b> ${p.area_m2 ? (parseFloat(p.area_m2)/10000).toFixed(2) + ' га' : '—'}
+            <b>Площадь:</b> ${area}
           `);
         }
       });
