@@ -1,186 +1,150 @@
-// === ГЕО АТЛАС: интерактивная карта ===
+// Глобальные переменные
 let currentMarker = null;
 let map = null;
 let soilLayer = null;
-let ugvLayer = null;
-let ooprLayer = null;
 
 document.addEventListener('DOMContentLoaded', function () {
+  // Инициализация карты
   map = L.map('map').setView([60, 30], 8);
-
+  
   const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
   });
   osm.addTo(map);
 
-  // Форматирование значений (прочерк для некорректных)
+  // Универсальная функция форматирования
   const formatValue = (val) => {
-    if (val === undefined || val === null || val === -999.9 || val === '-999.9') return '—';
+    if (val === undefined || val === null || val === -9999 || val === '-9999') return '—';
     const num = parseFloat(val);
     return isNaN(num) ? '—' : num.toFixed(1);
   };
 
-  // === ЗАГРУЗКА ТРЁХ СЛОЁВ ===
-  Promise.all([
-    fetch('soils_spb_lo.geojson').then(r => r.json()),
-  ]).then(([soilData, ugvData, ooprData]) => {
+  // ✅ ФУНКЦИЯ КЛИКА (работает с водой И почвами)
+  function handleLayerClick(lat, lng, properties) {
+    if (currentMarker) map.removeLayer(currentMarker);
+    currentMarker = L.marker([lat, lng]).addTo(map);
 
-    // --- Слой почв (с водой!) ---
-    soilLayer = L.geoJSON(soilData, {
-      style: function (feature) {
-        const props = feature.properties;
+    // ✅ ПРОВЕРКА ВОДЫ (3 надежных способа)
+    const soilTypeNum = parseInt(properties.soil_type || 0);
+    const isWater = properties.is_water === true || 
+                   properties.is_water === 'true' || 
+                   soilTypeNum === -1 ||
+                   properties.soil_textural_class?.includes('Водная');
 
-        // Проверка: водный полигон?
-        const isWater = props.is_water === true ||
-                        props.is_water === 'true' ||
-                        props.is_water === 1 ||
-                        props.soil_type === '-1' ||
-                        (props.soil_textural_class && props.soil_textural_class.includes('Водная'));
+    let soilClass;
+    if (isWater) {
+      soilClass = 'Водная поверхность';
+    } else {
+      const soilClassRaw = (properties.soil_textural_class || '').toLowerCase();
+      if (soilTypeNum === 3 || soilClassRaw.includes('глина')) soilClass = 'Глина';
+      else if (soilTypeNum === 2 || soilClassRaw.includes('тяжел')) soilClass = 'Тяжёлый суглинок';
+      else if (soilTypeNum === 1 || soilClassRaw.includes('легк')) soilClass = 'Лёгкий суглинок';
+      else soilClass = 'Супесь';
+    }
 
-        if (isWater) {
-          return { fillColor: '#b3e5fc', color: '#0288d1', weight: 1, fillOpacity: 0.5 };
-        }
+    const ph = isWater ? '—' : formatValue(properties.ph);
+    const oc = isWater ? '—' : formatValue(properties['organic_carbon_%']);
+    const area = properties.area_m2 ? (parseFloat(properties.area_m2)/10000).toFixed(2) + ' га' : '—';
+    
+    // ✅ Ksoil с учетом воды
+    let ksoil = 1.0;
+    if (isWater) ksoil = 0.5;
+    else if (soilClass === 'Глина') ksoil = 1.3;
+    else if (soilClass === 'Тяжёлый суглинок') ksoil = 1.1;
+    else if (soilClass === 'Лёгкий суглинок') ksoil = 1.05;
 
-        // Типы почв
-        const type = props.soil_type || props.soil_textural_class || '';
-        if (type.includes('Глина')) return { fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.5 };
-        if (type.includes('Тяжёлый суглинок')) return { fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.5 };
-        if (type.includes('Лёгкий суглинок')) return { fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.5 };
-        return { fillColor: '#90EE90', color: '#2E7D32', weight: 1, fillOpacity: 0.5 };
-      },
-      onEachFeature: (feature, layer) => {
-        layer.on('click', (e) => handleSoilClick(e.latlng.lat, e.latlng.lng, feature.properties));
-        const p = feature.properties;
-        layer.bindPopup(`<b>Тип:</b> ${p.soil_textural_class || p.soil_type || '—'}<br>pH: ${formatValue(p.ph)}<br>OC: ${formatValue(p['organic_carbon_%'])}`);
-      }
-    });
-
-    // --- Слой УГВ ---
-    ugvLayer = L.geoJSON(ugvData, {
-      style: { color: '#1976D2', weight: 1, fillOpacity: 0.2, fillColor: '#BBDEFB' },
-      onEachFeature: (feature, layer) => {
-        layer.on('click', (e) => handleUgvClick(e.latlng.lat, e.latlng.lng, feature.properties));
-        layer.bindPopup(`<b>УГВ:</b> ${feature.properties.ugv_class || '—'}<br>K<sub>ugv</sub>: ${feature.properties.k_ugv || '1.0'}`);
-      }
-    });
-
-    // --- Слой ООПТ ---
-    ooprLayer = L.geoJSON(ooprData, {
-      style: { color: '#B71C1C', weight: 1, fillOpacity: 0.2, fillColor: '#FFCDD2' },
-      onEachFeature: (feature, layer) => {
-        layer.on('click', (e) => handleOoprClick(e.latlng.lat, e.latlng.lng, feature.properties));
-        layer.bindPopup(`<b>Зона:</b> ${feature.properties.zone_type || '—'}<br>K<sub>oopr</sub>: ${feature.properties.k_oopr || '1.0'}`);
-      }
-    });
-
-    // Добавляем на карту
-    soilLayer.addTo(map);
-    ugvLayer.addTo(map);
-    ooprLayer.addTo(map);
-
-    // Управление слоями
-    const overlays = {
-      "Почвы (с водой)": soilLayer,
-      "УГВ": ugvLayer,
-      "ООПТ / Водоохранные зоны": ooprLayer
-    };
-    L.control.layers({ "OpenStreetMap": osm }, overlays).addTo(map);
-  }).catch(err => {
-    console.error('Ошибка загрузки GeoJSON:', err);
-    document.getElementById('info').innerHTML = `<p style="color:red">⚠️ Ошибка: ${err.message}</p>`;
-  });
-});
-
-// === ГЛОБАЛЬНОЕ СОСТОЯНИЕ ===
-let currentParams = {
-  soil: '—',
-  ph: '—',
-  organic_carbon: '—',
-  k_soil: 1.0,
-  k_ugv: 1.0,
-  k_oopr: 1.0
-};
-
-// === ОБРАБОТЧИКИ КЛИКА ПО СЛОЯМ ===
-function handleSoilClick(lat, lng, props) {
-  const isWater = props.is_water === true ||
-                  props.is_water === 'true' ||
-                  props.is_water === 1 ||
-                  props.soil_type === '-1' ||
-                  (props.soil_textural_class && props.soil_textural_class.includes('Водная'));
-
-  currentParams.soil = isWater ? 'Водная поверхность' : (props.soil_textural_class || props.soil_type || '—');
-  currentParams.ph = isWater ? '—' : (parseFloat(props.ph) || '—');
-  currentParams.organic_carbon = isWater ? '—' : (parseFloat(props['organic_carbon_%']) || '—');
-
-  // Расчёт K_soil
-  if (isWater) {
-    currentParams.k_soil = 0.5;
-  } else {
-    const type = currentParams.soil;
-    if (type.includes('Торф')) currentParams.k_soil = 1.4;
-    else if (type.includes('Глина')) currentParams.k_soil = 1.3;
-    else if (type.includes('Тяжёлый суглинок')) currentParams.k_soil = 1.1;
-    else if (type.includes('Лёгкий суглинок')) currentParams.k_soil = 1.05;
-    else if (type.includes('Песок') || type.includes('Супесь')) currentParams.k_soil = 1.0;
-    else currentParams.k_soil = 1.0;
+    const params = { soil: soilClass, ph, organic_carbon: oc, area, ksoil, kugv: 1.0, koopr: 1.0 };
+    updateSidebar(lat, lng, params);
   }
 
-  updateMarker(lat, lng);
-  updateSidebar(lat, lng);
-}
+  // Обновление боковой панели
+  function updateSidebar(lat, lng, params) {
+    const infoDiv = document.getElementById('info');
+    infoDiv.innerHTML = `
+      <p><strong>📍 Координаты:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
+      <h3>🌱 Параметры участка</h3>
+      <p><strong>Тип грунта:</strong> ${params.soil}</p>
+      <p><strong>pH:</strong> ${params.ph}</p>
+      <p><strong>OC (%):</strong> ${params.organic_carbon}</p>
+      <p><strong>Площадь:</strong> ${params.area}</p>
+      <p><strong>K<sub>soil</sub>:</strong> ${params.ksoil.toFixed(2)}</p>
+      <br>
+      <button class="gii-btn" onclick="calculateGII(${params.ksoil}, ${params.kugv}, ${params.koopr})">
+        🚀 Рассчитать GII
+      </button>
+    `;
+  }
 
-function handleUgvClick(lat, lng, props) {
-  currentParams.k_ugv = parseFloat(props.k_ugv) || 1.0;
-  updateMarker(lat, lng);
-  updateSidebar(lat, lng);
-}
+  // ✅ Загрузка GeoJSON
+  fetch('soil_spb_lo_h2o_fixed.geojson')
+    .then(response => {
+      if (!response.ok) throw new Error(`Файл не найден (${response.status})`);
+      return response.json();
+    })
+    .then(soilData => {
+      console.log('✅ Загружено:', soilData.features.length, 'полигонов');
+      
+      // Подсчет водных
+      const waterCount = soilData.features.filter(f => 
+        f.properties.is_water || parseInt(f.properties.soil_type || 0) === -1
+      ).length;
+      console.log('💧 Водных:', waterCount);
 
-function handleOoprClick(lat, lng, props) {
-  currentParams.k_oopr = parseFloat(props.k_oopr) || 1.0;
-  updateMarker(lat, lng);
-  updateSidebar(lat, lng);
-}
+      soilLayer = L.geoJSON(soilData, {
+        style: function(feature) {
+          const soilNum = parseInt(feature.properties.soil_type || 0);
+          const isWater = feature.properties.is_water === true || soilNum === -1;
 
-// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
-function updateMarker(lat, lng) {
-  if (currentMarker) map.removeLayer(currentMarker);
-  currentMarker = L.marker([lat, lng]).addTo(map);
-}
+          if (isWater) {
+            return { fillColor: '#1e90ff', color: '#0d47a1', weight: 2, fillOpacity: 0.5 };
+          }
+          if (soilNum === 3) return { fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.6 };
+          if (soilNum === 2) return { fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.6 };
+          if (soilNum === 1) return { fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.6 };
+          return { fillColor: '#90EE90', color: '#2E7D32', weight: 1, fillOpacity: 0.6 };
+        },
 
-function updateSidebar(lat, lng) {
-  const infoDiv = document.getElementById('info');
-  infoDiv.innerHTML = `
-    <p><strong>Координаты:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
-    <h3>Параметры местности</h3>
-    <p><strong>Тип грунта:</strong> ${currentParams.soil}</p>
-    <p><strong>pH:</strong> ${typeof currentParams.ph === 'number' ? currentParams.ph.toFixed(1) : currentParams.ph}</p>
-    <p><strong>Органический углерод (%):</strong> ${typeof currentParams.organic_carbon === 'number' ? currentParams.organic_carbon.toFixed(1) : currentParams.organic_carbon}</p>
-    <p><strong>K<sub>soil</sub>:</strong> ${currentParams.k_soil.toFixed(2)}</p>
-    <p><strong>K<sub>ugv</sub>:</strong> ${currentParams.k_ugv.toFixed(2)}</p>
-    <p><strong>K<sub>oopr</sub>:</strong> ${currentParams.k_oopr.toFixed(2)}</p>
-    <br>
-    <button onclick="calculateGII()">Рассчитать GII</button>
-  `;
-}
+        onEachFeature: function(feature, layer) {
+          layer.on('click', e => handleLayerClick(e.latlng.lat, e.latlng.lng, feature.properties));
+          
+          const p = feature.properties;
+          layer.bindPopup(`
+            <b>Тип:</b> ${p.soil_textural_class || '—'}<br>
+            <b>pH:</b> ${formatValue(p.ph)}<br>
+            <b>OC (%):</b> ${formatValue(p.organic_carbon_%)}<br>
+            <b>Площадь:</b> ${p.area_m2 ? (parseFloat(p.area_m2)/10000).toFixed(2) + ' га' : '—'}
+          `);
+        }
+      });
 
-// === РАСЧЁТ GII ===
-function calculateGII() {
-  const GII0_PND = 2.12;
-  const Kkr = currentParams.k_soil * currentParams.k_ugv * currentParams.k_oopr;
-  const GII = (GII0_PND * Kkr).toFixed(2);
+      soilLayer.addTo(map);
+      L.control.layers({ "OSM": osm }, { "Почвы СПб/ЛО": soilLayer }).addTo(map);
+      
+      document.getElementById('info').innerHTML = `
+        <p>✅ ${soilData.features.length} полигонов (${waterCount} водных)</p>
+        <p>🖱️ Кликните по полигону</p>
+      `;
+    })
+    .catch(err => {
+      console.error('❌ Ошибка:', err);
+      document.getElementById('info').innerHTML = `<p style="color:red;">❌ ${err.message}</p>`;
+    });
+});
+
+// Глобальные функции GII
+function calculateGII(ksoil, kugv, koopr) {
+  const GII0 = 2.12;
+  const Kkr = ksoil * kugv * koopr;
+  const GII = (GII0 * Kkr).toFixed(2);
   const risk = getRiskClass(parseFloat(GII));
-
-  const result = `
-    <div style="margin-top:15px; padding:12px; background:#E3F2FD; border-left:4px solid #2196F3; border-radius:4px;">
-      <strong>Результат расчёта:</strong><br>
-      GII₀ (ПНД) = 2.12<br>
-      K<sub>кр</sub> = ${Kkr.toFixed(2)}<br>
-      <b style="color:#D32F2F;">GII = ${GII}</b><br><br>
+  
+  document.getElementById('info').innerHTML += `
+    <div style="margin:15px 0;padding:15px;background:#E3F2FD;border-left:5px solid #2196F3;border-radius:4px;">
+      <strong>🎯 GII = ${GII}</strong><br>
+      K<sub>кр</sub> = ${(ksoil*kugv*koopr).toFixed(2)}<br>
       <em>${risk}</em>
     </div>
   `;
-  document.getElementById('info').innerHTML += result;
 }
 
 function getRiskClass(gii) {
@@ -188,5 +152,5 @@ function getRiskClass(gii) {
   if (gii <= 4.0) return "II — Низкий";
   if (gii <= 6.0) return "III — Умеренный";
   if (gii <= 8.0) return "IV — Высокий";
-  return "V — Критический";
+  return "V — Крайне высокий";
 }

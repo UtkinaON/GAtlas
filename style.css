@@ -38,6 +38,21 @@
   z-index: 2;
 }
 
+.gii-btn {
+  background: #2E7D32;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  width: 100%;
+}
+
+.gii-btn:hover {
+  background: #1B5E20;
+}
+
 #info p {
   margin: 8px 0;
   line-height: 1.5;
