@@ -1,22 +1,50 @@
-// Глобальные переменные
+// === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
 let currentMarker = null;
 let map = null;
 let soilLayer = null;
 
+// === ГЛОБАЛЬНЫЕ ФУНКЦИИ GII ===
+function calculateGII(ksoil, kugv, koopr) {
+  const GII0 = 2.12; // GII₀ для ПНД из статьи 2
+  const Kkr = ksoil * kugv * koopr;
+  const GII = (GII0 * Kkr).toFixed(2);
+  const risk = getRiskClass(parseFloat(GII));
+  
+  const infoDiv = document.getElementById('info');
+  infoDiv.innerHTML += `
+    <div style="margin:15px 0;padding:15px;background:#E3F2FD;border-left:5px solid #2196F3;border-radius:4px;">
+      <strong>🎯 GII = ${GII}</strong><br>
+      K<sub>кр</sub> = ${Kkr.toFixed(2)}<br>
+      <em>${risk}</em>
+    </div>
+  `;
+}
+
+function getRiskClass(gii) {
+  if (gii <= 2.0) return "I — Очень низкий";
+  if (gii <= 4.0) return "II — Низкий";
+  if (gii <= 6.0) return "III — Умеренный";
+  if (gii <= 8.0) return "IV — Высокий";
+  return "V — Крайне высокий";
+}
+
+// === ИНИЦИАЛИЗАЦИЯ ПОСЛЕ ЗАГРУЗКИ DOM ===
 document.addEventListener('DOMContentLoaded', function() {
   map = L.map('map').setView([60, 30], 8);
   
   const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://www.openstreetmap.org/copyright  ">OpenStreetMap</a>'
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
   });
   osm.addTo(map);
 
+  // Форматирование значений
   function formatValue(val) {
     if (val === undefined || val === null || val === -9999 || val === '-9999') return '—';
     const num = parseFloat(val);
     return isNaN(num) ? '—' : num.toFixed(1);
   }
 
+  // Обработка клика по полигону
   function handleLayerClick(lat, lng, properties) {
     if (currentMarker) map.removeLayer(currentMarker);
     currentMarker = L.marker([lat, lng]).addTo(map);
@@ -25,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const isWater = properties.is_water === true || 
                    properties.is_water === 'true' || 
                    soilTypeNum === -1 ||
-                   properties.soil_textural_class?.includes('Водная');
+                   (properties.soil_textural_class && properties.soil_textural_class.includes('Водная'));
 
     let soilClass;
     if (isWater) {
@@ -40,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const ph = isWater ? '—' : formatValue(properties.ph);
     const oc = isWater ? '—' : formatValue(properties['organic_carbon_%']);
-    const area = properties.area_m2 ? (parseFloat(properties.area_m2)/10000).toFixed(2) + ' га' : '—';
+    const area = properties.area_m2 ? (parseFloat(properties.area_m2) / 10000).toFixed(2) + ' га' : '—';
     
     let ksoil = 1.0;
     if (isWater) ksoil = 0.5;
@@ -51,6 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateSidebar(lat, lng, soilClass, ph, oc, area, ksoil);
   }
 
+  // Обновление боковой панели
   function updateSidebar(lat, lng, soilClass, ph, oc, area, ksoil) {
     const infoDiv = document.getElementById('info');
     infoDiv.innerHTML = `
@@ -65,12 +94,13 @@ document.addEventListener('DOMContentLoaded', function() {
       <button id="giiBtn" class="gii-btn">🚀 Рассчитать GII</button>
     `;
     
-    // ✅ Добавляем обработчик кнопки ПОСЛЕ создания HTML
+    // Назначаем обработчик кнопке
     document.getElementById('giiBtn').onclick = function() {
       calculateGII(ksoil, 1.0, 1.0);
     };
   }
 
+  // Загрузка GeoJSON
   fetch('soil_spb_lo_h2o_fixed.geojson')
     .then(response => {
       if (!response.ok) throw new Error(`Файл не найден (${response.status})`);
@@ -104,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
           });
           
           const p = feature.properties;
-          const area = p.area_m2 ? (parseFloat(p.area_m2)/10000).toFixed(2) + ' га' : '—';
+          const area = p.area_m2 ? (parseFloat(p.area_m2) / 10000).toFixed(2) + ' га' : '—';
           layer.bindPopup(`
             <b>Тип:</b> ${p.soil_textural_class || '—'}<br>
             <b>pH:</b> ${formatValue(p.ph)}<br>
@@ -127,28 +157,3 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('info').innerHTML = `<p style="color:red;">❌ ${err.message}</p>`;
     });
 });
-
-// === ГЛОБАЛЬНЫЕ ФУНКЦИИ GII ===
-function calculateGII(ksoil, kugv, koopr) {
-  const GII0 = 2.12;
-  const Kkr = ksoil * kugv * koopr;
-  const GII = (GII0 * Kkr).toFixed(2);
-  const risk = getRiskClass(parseFloat(GII));
-  
-  const infoDiv = document.getElementById('info');
-  infoDiv.innerHTML += `
-    <div style="margin:15px 0;padding:15px;background:#E3F2FD;border-left:5px solid #2196F3;border-radius:4px;">
-      <strong>🎯 GII = ${GII}</strong><br>
-      K<sub>кр</sub> = ${Kkr.toFixed(2)}<br>
-      <em>${risk}</em>
-    </div>
-  `;
-}
-
-function getRiskClass(gii) {
-  if (gii <= 2.0) return "I — Очень низкий";
-  if (gii <= 4.0) return "II — Низкий";
-  if (gii <= 6.0) return "III — Умеренный";
-  if (gii <= 8.0) return "IV — Высокий";
-  return "V — Крайне высокий";
-}
