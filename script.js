@@ -130,8 +130,8 @@ document.addEventListener('DOMContentLoaded', function() {
           if (soilNum === 3) return { fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.4 };
           if (soilNum === 2) return { fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.4 };
           if (soilNum === 1) return { fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.4 };
-		  if (soilNum === -2) return {fillColor: '#8B4513', color: '#654321', weight: 1, fillOpacity: 0.4};
-}         return { fillColor: '#90EE90', color: '#2E7D32', weight: 1, fillOpacity: 0.6 };
+
+          return { fillColor: '#90EE90', color: '#2E7D32', weight: 1, fillOpacity: 0.4};
         },
 
         onEachFeature: function(feature, layer) {
