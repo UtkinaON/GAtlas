@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (soilTypeNum === 3 || soilClassRaw.includes('глина')) soilClass = 'Глина';
       else if (soilTypeNum === 2 || soilClassRaw.includes('тяжел')) soilClass = 'Тяжёлый суглинок';
       else if (soilTypeNum === 1 || soilClassRaw.includes('легк')) soilClass = 'Лёгкий суглинок';
+      else if (soilTypeNum === -2 || soilClassRaw.includes('болот')) soilClass = 'Болото';
       else soilClass = 'Супесь';
     }
 
@@ -75,6 +76,10 @@ document.addEventListener('DOMContentLoaded', function() {
     else if (soilClass === 'Глина') ksoil = 1.3;
     else if (soilClass === 'Тяжёлый суглинок') ksoil = 1.1;
     else if (soilClass === 'Лёгкий суглинок') ksoil = 1.05;
+	else if (soilClass === 'Болото') {ksoil = 1.4;  // торф
+										ph = formatValue(5.0);
+										oc = formatValue(4.5);
+									  };
 
     updateSidebar(lat, lng, soilClass, ph, oc, area, ksoil);
   }
@@ -122,10 +127,11 @@ document.addEventListener('DOMContentLoaded', function() {
           if (isWater) {
             return { fillColor: '#1e90ff', color: '#0d47a1', weight: 2, fillOpacity: 0.5 };
           }
-          if (soilNum === 3) return { fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.6 };
-          if (soilNum === 2) return { fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.6 };
-          if (soilNum === 1) return { fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.6 };
-          return { fillColor: '#90EE90', color: '#2E7D32', weight: 1, fillOpacity: 0.6 };
+          if (soilNum === 3) return { fillColor: '#8B4513', color: '#5D2906', weight: 1, fillOpacity: 0.4 };
+          if (soilNum === 2) return { fillColor: '#A0522D', color: '#653E1A', weight: 1, fillOpacity: 0.4 };
+          if (soilNum === 1) return { fillColor: '#F4A460', color: '#D2691E', weight: 1, fillOpacity: 0.4 };
+		  if (soilNum === -2) return {fillColor: '#8B4513', color: '#654321', weight: 1, fillOpacity: 0.4};
+}         return { fillColor: '#90EE90', color: '#2E7D32', weight: 1, fillOpacity: 0.6 };
         },
 
         onEachFeature: function(feature, layer) {
