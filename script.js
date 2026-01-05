@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Загрузка GeoJSON
-  fetch('soil_spb_lo_h2o_fixed.geojson')
+  fetch('soil_spb_lo.geojson')
     .then(response => {
       if (!response.ok) throw new Error(`Файл не найден (${response.status})`);
       return response.json();
