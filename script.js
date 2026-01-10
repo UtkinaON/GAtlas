@@ -183,7 +183,6 @@ function showMaterialSelector(ksoil) {
     const modal = document.getElementById('materialModal');
     if (modal) modal.remove();
   }
-}
 
 // === ФУНКЦИЯ ОПРЕДЕЛЕНИЯ ТИПА ПОЧВЫ И СВОЙСТВ ===
 function getSoilInfo(properties) {
