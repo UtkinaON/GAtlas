@@ -91,6 +91,7 @@ function getRiskClass(gii) {
   return "V — Крайне высокий";
 }
 
+
 // === МОДАЛЬНОЕ ОКНО с ВСЕМИ КОЭФФИЦИЕНТАМИ ===
 function showMaterialSelector(ksoil) {
   const materials = Object.keys(GII0_VALUES);
@@ -135,8 +136,7 @@ function showMaterialSelector(ksoil) {
   
   document.body.insertAdjacentHTML('beforeend', modalHTML);
   
-  
-   // ✅ ПРЕДВАРИТЕЛЬНЫЙ РАСЧЁТ
+  // ✅ ПРЕДВАРИТЕЛЬНЫЙ РАСЧЁТ
   function updatePreview() {
     const kugv = parseFloat(document.getElementById('kugvSelect').value);
     const koopr = parseFloat(document.getElementById('kooprSelect').value);
@@ -146,8 +146,7 @@ function showMaterialSelector(ksoil) {
       `<strong>Предпросмотр:</strong> K<sub>soil</sub>=${ksoil.toFixed(2)} × ${kugv} × ${koopr} = K<sub>кр</sub>=${kkrPreview}`;
   }
   
-  
-   // Обработчики
+  // Обработчики
   document.getElementById('kugvSelect').onchange = updatePreview;
   document.getElementById('kooprSelect').onchange = updatePreview;
   document.getElementById('materialSelect').onchange = updatePreview;
@@ -168,21 +167,9 @@ function showMaterialSelector(ksoil) {
     if (modal) modal.remove();
   }
 }
-  
-  
-  
-  document.getElementById('calcGII').onclick = function() {
-    const material = document.getElementById('materialSelect').value;
-    calculateGII(currentKsoil, 1.0, 1.0, material);
-    closeModal();
-  };
-  
-  document.getElementById('closeModal').onclick = closeModal;
-  
-  function closeModal() {
-    const modal = document.getElementById('materialModal');
-    if (modal) modal.remove();
-  }
+
+
+
 
 // === ФУНКЦИЯ ОПРЕДЕЛЕНИЯ ТИПА ПОЧВЫ И СВОЙСТВ ===
 function getSoilInfo(properties) {
