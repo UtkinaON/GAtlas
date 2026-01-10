@@ -91,7 +91,7 @@ function getRiskClass(gii) {
   return "V — Крайне высокий";
 }
 
-// === МОДАЛЬНОЕ ОКНО ДЛЯ ВЫБОРА МАТЕРИАЛА ===
+// === МОДАЛЬНОЕ ОКНО с ВСЕМИ КОЭФФИЦИЕНТАМИ ===
 function showMaterialSelector(ksoil) {
   const materials = Object.keys(GII0_VALUES);
   let optionsHTML = materials.map(material => 
@@ -99,28 +99,77 @@ function showMaterialSelector(ksoil) {
   ).join('');
   
   const modalHTML = `
-    <div id="materialModal" style="
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-      background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-      <div style="
-        background: white; padding: 30px; border-radius: 10px; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-        <h3>🏗️ Выберите материал</h3>
-        <select id="materialSelect" style="width: 100%; padding: 12px; margin: 15px 0; font-size: 16px; border: 2px solid #ddd; border-radius: 5px;">
-          ${optionsHTML}
-        </select>
-        <div style="display: flex; gap: 10px; justify-content: center;">
-          <button id="calcGII" style="
-            padding: 12px 24px; background: #4CAF50; color: white; border: none; 
-            border-radius: 5px; font-size: 16px; cursor: pointer;">🚀 Рассчитать GII</button>
-          <button id="closeModal" style="
-            padding: 12px 24px; background: #f44336; color: white; border: none; 
-            border-radius: 5px; font-size: 16px; cursor: pointer;">❌ Отмена</button>
+    <div id="materialModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;">
+      <div style="background:white;padding:30px;border-radius:10px;max-width:450px;box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+        <h3>🏗️ Параметры для расчёта GII</h3>
+        <div style="margin:15px 0;">
+          <label>K<sub>угв</sub> (уровень грунтовых вод): </label><br>
+          <select id="kugvSelect" style="width:100%;padding:8px;margin:5px 0;border:2px solid #ddd;border-radius:5px;">
+            <option value="0.8">Низкий (&lt;2м) = 0.8</option>
+            <option value="1.0">Средний (2-4м) = 1.0</option>
+            <option value="1.2">Высокий (&gt;4м) = 1.2</option>
+          </select>
         </div>
+        <div style="margin:15px 0;">
+          <label>K<sub>оопр</sub> (обеспечение): </label><br>
+          <select id="kooprSelect" style="width:100%;padding:8px;margin:5px 0;border:2px solid #ddd;border-radius:5px;">
+            <option value="0.9">Низкое = 0.9</option>
+            <option value="1.0">Среднее = 1.0</option>
+            <option value="1.1">Высокое = 1.1</option>
+          </select>
+        </div>
+        <div style="margin:15px 0;">
+          <label>Материал: </label><br>
+          <select id="materialSelect" style="width:100%;padding:8px;margin:5px 0;border:2px solid #ddd;border-radius:5px;">
+            ${optionsHTML}
+          </select>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <button id="calcGII" style="padding:12px 24px;background:#4CAF50;color:white;border:none;border-radius:5px;font-size:16px;cursor:pointer;">🚀 Рассчитать GII</button>
+          <button id="closeModal" style="padding:12px 24px;background:#f44336;color:white;border:none;border-radius:5px;font-size:16px;cursor:pointer;">❌ Отмена</button>
+        </div>
+        <div id="preview" style="margin-top:15px;padding:10px;background:#f0f8ff;border-radius:5px;font-size:14px;"></div>
       </div>
     </div>
   `;
   
   document.body.insertAdjacentHTML('beforeend', modalHTML);
+  
+  
+   // ✅ ПРЕДВАРИТЕЛЬНЫЙ РАСЧЁТ
+  function updatePreview() {
+    const kugv = parseFloat(document.getElementById('kugvSelect').value);
+    const koopr = parseFloat(document.getElementById('kooprSelect').value);
+    const material = document.getElementById('materialSelect').value;
+    const kkrPreview = (ksoil * kugv * koopr).toFixed(2);
+    document.getElementById('preview').innerHTML = 
+      `<strong>Предпросмотр:</strong> K<sub>soil</sub>=${ksoil.toFixed(2)} × ${kugv} × ${koopr} = K<sub>кр</sub>=${kkrPreview}`;
+  }
+  
+  
+   // Обработчики
+  document.getElementById('kugvSelect').onchange = updatePreview;
+  document.getElementById('kooprSelect').onchange = updatePreview;
+  document.getElementById('materialSelect').onchange = updatePreview;
+  updatePreview(); // Начальный просчёт
+  
+  document.getElementById('calcGII').onclick = function() {
+    const kugv = parseFloat(document.getElementById('kugvSelect').value);
+    const koopr = parseFloat(document.getElementById('kooprSelect').value);
+    const material = document.getElementById('materialSelect').value;
+    calculateGII(currentKsoil, kugv, koopr, material); // ✅ ДИНАМИЧЕСКИЕ значения!
+    closeModal();
+  };
+  
+  document.getElementById('closeModal').onclick = closeModal;
+  
+  function closeModal() {
+    const modal = document.getElementById('materialModal');
+    if (modal) modal.remove();
+  }
+}
+  
+  
   
   document.getElementById('calcGII').onclick = function() {
     const material = document.getElementById('materialSelect').value;
@@ -279,7 +328,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
   }
   
-  // Остальной код загрузки GeoJSON без изменений...
+  // загрузка GeoJSON 
   fetch('soil_boloto.geojson')
     .then(response => {
       if (!response.ok) throw new Error(`Файл не найден (${response.status})`);
