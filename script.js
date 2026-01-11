@@ -83,6 +83,14 @@ function calculateGII(ksoil, kugv, koopr, material) {
       <strong>Класс риска:</strong> <em>${risk}</em>
     </div>
   `;
+  
+  // ✅ ВОССТАНАВЛИВАЕМ ПАНЕЛЬ с НОВОЙ кнопкой!
+  const currentLat = parseFloat(infoDiv.querySelector('p strong').textContent.match(/[\d.-]+/)[0]);
+  const currentLng = parseFloat(infoDiv.querySelectorAll('p strong')[1].textContent.match(/[\d.-]+/)[1]);
+  
+  // БЕРЁМ текущие параметры из глобальных или DOM
+  updateSidebarAfterGII(currentLat, currentLng, /* soilClass, ph, oc, area, ksoil */);
+
 }
 
 function getRiskClass(gii) {
@@ -282,6 +290,29 @@ document.addEventListener('DOMContentLoaded', function() {
     };
   }
   
+  
+  // ✅ ОБНОВЛЕНИЕ ПАНЕЛИ ПОСЛЕ GII (новая кнопка!!!!!!)
+function updateSidebarAfterGII(lat, lng, soilClass, ph, oc, area, ksoil) {
+  const infoDiv = document.getElementById('info');
+  infoDiv.innerHTML = `
+    <p><strong>📍 Координаты:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
+    <h3>🌱 Параметры участка</h3>
+    <p><strong>Тип грунта:</strong> ${soilClass}</p>
+    <p><strong>pH:</strong> ${ph}</p>
+    <p><strong>OC (%):</strong> ${oc}</p>
+    <p><strong>Площадь:</strong> ${area}</p>
+    <p><strong>K<sub>soil</sub>:</strong> ${ksoil.toFixed(2)}</p>
+    <br>
+    <button id="giiBtn" class="gii-btn">📊 Интегральный показатель GII</button>
+  `;
+  
+  // ✅ Повторный клик → ОПЯТЬ обычная кнопка
+  document.getElementById('giiBtn').onclick = function() {
+    showMaterialSelector(ksoil);
+  };
+}
+
+
   // ✅ БОКОВАЯ ПАНЕЛЬ ДЛЯ ВОДНЫХ ОБЪЕКТОВ
   function updateWaterSidebar(lat, lng, waterInfo, area) {
     const infoDiv = document.getElementById('info');
