@@ -378,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
             `);
           } else {
             layer.bindPopup(`
-			  <b>📍 Координаты:${lat.toFixed(4)}, ${lng.toFixed(4)}</br>
+			  <b>📍 Координаты:</br>
               <b>🌱 Тип:</b> ${soilInfo.soilClass}<br>
               <b>🔬 pH:</b> ${formatValue(soilInfo.ph)}<br>
               <b>🌿 OC (%):</b> ${formatValue(soilInfo.oc)}<br>
