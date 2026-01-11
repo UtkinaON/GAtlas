@@ -83,6 +83,9 @@ function calculateGII(ksoil, kugv, koopr, material) {
       <strong>Класс риска:</strong> <em>${risk}</em>
     </div>
   `;
+  
+  //!!!! меню название
+  document.getElementById('giiBtn').innerText = 'Новый Текст';
 }
 
 function getRiskClass(gii) {
