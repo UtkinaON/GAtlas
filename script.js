@@ -74,11 +74,13 @@ function calculateGII(ksoil, kugv, koopr, material) {
   const infoDiv = document.getElementById('info');
   infoDiv.innerHTML += `
     <div style="margin:15px 0;padding:15px;background:#E3F2FD;border-left:5px solid #2196F3;border-radius:4px;">
-      <strong>🎯 GII = ${GII}</strong><br>
       <strong>Материал:</strong> ${material} (GII₀ = ${GII0})<br>
-      K<sub>soil</sub> = ${ksoil.toFixed(2)} | K<sub>угв</sub> = ${kugv} | K<sub>оопр</sub> = ${koopr}<br>
+      K<sub>soil</sub> = ${ksoil.toFixed(2)} <br>
+	  K<sub>угв</sub> = ${kugv} <br>
+	  K<sub>оопр</sub> = ${koopr}<br>
       K<sub>кр</sub> = ${Kkr.toFixed(2)}<br>
-      <em>${risk}</em>
+	  <strong>🎯 GII = ${GII}</strong><br>
+      <strong>Класс риска:</strong> <em>${risk}</em>
     </div>
   `;
 }
@@ -103,6 +105,12 @@ function showMaterialSelector(ksoil) {
     <div id="materialModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;">
       <div style="background:white;padding:30px;border-radius:10px;max-width:450px;box-shadow:0 10px 30px rgba(0,0,0,0.3);">
         <h3>🏗️ Параметры для расчёта GII</h3>
+		<div style="margin:15px 0;">
+          <label>Материал: </label><br>
+          <select id="materialSelect" style="width:100%;padding:8px;margin:5px 0;border:2px solid #ddd;border-radius:5px;">
+            ${optionsHTML}
+          </select>
+        </div>
         <div style="margin:15px 0;">
           <label>K<sub>угв</sub> (уровень грунтовых вод): </label><br>
           <select id="kugvSelect" style="width:100%;padding:8px;margin:5px 0;border:2px solid #ddd;border-radius:5px;">
@@ -117,12 +125,6 @@ function showMaterialSelector(ksoil) {
             <option value="0.9">Низкое = 0.9</option>
             <option value="1.0">Среднее = 1.0</option>
             <option value="1.1">Высокое = 1.1</option>
-          </select>
-        </div>
-        <div style="margin:15px 0;">
-          <label>Материал: </label><br>
-          <select id="materialSelect" style="width:100%;padding:8px;margin:5px 0;border:2px solid #ddd;border-radius:5px;">
-            ${optionsHTML}
           </select>
         </div>
         <div style="display:flex;gap:10px;justify-content:center;">
@@ -143,7 +145,7 @@ function showMaterialSelector(ksoil) {
     const material = document.getElementById('materialSelect').value;
     const kkrPreview = (ksoil * kugv * koopr).toFixed(2);
     document.getElementById('preview').innerHTML = 
-      `<strong>Предпросмотр:</strong> K<sub>soil</sub>=${ksoil.toFixed(2)} × ${kugv} × ${koopr} = K<sub>кр</sub>=${kkrPreview}`;
+      `<strong>По типу грунта:</strong> K<sub>soil</sub>=${ksoil.toFixed(2)} `;
   }
   
   // Обработчики
