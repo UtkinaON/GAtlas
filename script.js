@@ -3,11 +3,9 @@ let currentMarker = null;
 let map = null;
 let soilLayer = null;
 let currentKsoil = 1.0;
-
-// ✅ ГЛОБАЛЬНЫЕ для сохранения параметров
 let currentLat = 60, currentLng = 30;
 let currentSoilClass = '', currentPh = '', currentOc = '', currentArea = '';
-let giiCalculated = false; // Флаг: GII уже рассчитан?
+let giiCalculated = false;
 
 // === БАЗОВЫЕ GII0 ПО МАТЕРИАЛАМ ===
 const GII0_VALUES = {
@@ -72,6 +70,10 @@ function calculateGII(ksoil, kugv, koopr, material) {
   const risk = getRiskClass(parseFloat(GII));
 
   const infoDiv = document.getElementById('info');
+  
+  // ✅ ОЧИЩАЕМ старые результаты GII ПЕРЕД добавлением нового
+  infoDiv.innerHTML = infoDiv.innerHTML.split('<div style="margin:15px 0;padding:15px;background:#E3F2FD')[0];
+  
   infoDiv.innerHTML += `
     <div style="margin:15px 0;padding:15px;background:#E3F2FD;border-left:5px solid #2196F3;border-radius:4px;">
       <strong>Материал:</strong> ${material} (GII₀ = ${GII0})<br>
@@ -84,9 +86,13 @@ function calculateGII(ksoil, kugv, koopr, material) {
     </div>
   `;
   
-  // ✅ МЕНЯЕМ кнопку и флаг после расчёта
+  // ✅ МЕНЯЕМ кнопку и флаг
   giiCalculated = true;
-  updateSoilSidebar(currentLat, currentLng, currentSoilClass, currentPh, currentOc, currentArea, ksoil);
+  
+  // ✅ ПЕРЕОТРИСОВЫВАЕМ боковую панель с новой кнопкой
+  setTimeout(() => {
+    updateSoilSidebar(currentLat, currentLng, currentSoilClass, currentPh, currentOc, currentArea, ksoil);
+  }, 100);
 }
 
 function getRiskClass(gii) {
@@ -97,7 +103,7 @@ function getRiskClass(gii) {
   return "V — Крайне высокий";
 }
 
-// === МОДАЛЬНОЕ ОКНО с ВСЕМИ КОЭФФИЦИЕНТАМИ ===
+// === МОДАЛЬНОЕ ОКНО ===
 function showMaterialSelector(ksoil) {
   const materials = Object.keys(GII0_VALUES);
   let optionsHTML = materials.map(material => 
@@ -141,28 +147,27 @@ function showMaterialSelector(ksoil) {
 
   document.body.insertAdjacentHTML('beforeend', modalHTML);
 
-  // ✅ ПРЕДВАРИТЕЛЬНЫЙ РАСЧЁТ Kкр
+  // ✅ Предпросмотр
   function updatePreview() {
     const kugv = parseFloat(document.getElementById('kugvSelect').value);
     const koopr = parseFloat(document.getElementById('kooprSelect').value);
-    const material = document.getElementById('materialSelect').value;
     const kkrPreview = (ksoil * kugv * koopr).toFixed(2);
     document.getElementById('preview').innerHTML = 
       `<strong>Предпросмотр:</strong> K<sub>soil</sub>=${ksoil.toFixed(2)} × ${kugv} × ${koopr} = K<sub>кр</sub>=${kkrPreview}`;
   }
 
-  // Обработчики
   document.getElementById('kugvSelect').onchange = updatePreview;
   document.getElementById('kooprSelect').onchange = updatePreview;
   document.getElementById('materialSelect').onchange = updatePreview;
   updatePreview();
 
+  // ✅ РАССЧИТАТЬ GII + ЗАКРЫТЬ МОДАЛКУ
   document.getElementById('calcGII').onclick = function() {
     const kugv = parseFloat(document.getElementById('kugvSelect').value);
     const koopr = parseFloat(document.getElementById('kooprSelect').value);
     const material = document.getElementById('materialSelect').value;
     calculateGII(ksoil, kugv, koopr, material);
-    closeModal();
+    closeModal(); // ✅ ЗАКРЫВАЕМ МОДАЛКУ
   };
 
   document.getElementById('closeModal').onclick = closeModal;
@@ -231,12 +236,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (soilInfo.isWater) {
       const waterInfo = getWaterInfo(lat, lng);
       updateWaterSidebar(lat, lng, waterInfo, area);
+      giiCalculated = false; // Сброс для воды
     } else {
       updateSoilSidebar(lat, lng, soilInfo.soilClass, formatValue(soilInfo.ph), formatValue(soilInfo.oc), area, soilInfo.ksoil);
     }
   }
 
-  // ✅ БОКОВАЯ ПАНЕЛЬ ДЛЯ ПОЧВ (с сохранением параметров)
+  // ✅ БОКОВАЯ ПАНЕЛЬ ДЛЯ ПОЧВ
   function updateSoilSidebar(lat, lng, soilClass, ph, oc, area, ksoil) {
     currentLat = lat; currentLng = lng;
     currentSoilClass = soilClass; currentPh = ph; currentOc = oc; currentArea = area;
@@ -263,7 +269,6 @@ document.addEventListener('DOMContentLoaded', function() {
       showMaterialSelector(ksoil);
     };
 
-    // ✅ КНОПКА ОЧИСТКИ (если GII рассчитан)
     if (giiCalculated) {
       document.getElementById('clearBtn').onclick = function() {
         giiCalculated = false;
@@ -272,7 +277,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // ✅ БОКОВАЯ ПАНЕЛЬ ДЛЯ ВОДЫ (без изменений)
   function updateWaterSidebar(lat, lng, waterInfo, area) {
     const infoDiv = document.getElementById('info');
     infoDiv.innerHTML = `
@@ -304,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
   }
 
-  // Загрузка GeoJSON (без изменений)
+  // Загрузка GeoJSON
   fetch('soil_boloto.geojson')
     .then(response => {
       if (!response.ok) throw new Error(`Файл не найден (${response.status})`);
@@ -339,7 +343,31 @@ document.addEventListener('DOMContentLoaded', function() {
           layer.on('click', function(e) {
             handleLayerClick(e.latlng.lat, e.latlng.lng, feature.properties);
           });
-          // Попапы (без изменений)...
+
+          const soilInfo = getSoilInfo(feature.properties);
+          const area = feature.properties.area_m2 ?
+            (parseFloat(feature.properties.area_m2) / 10000).toFixed(2) + ' га' : '—';
+
+          if (soilInfo.isWater) {
+            const waterInfo = getWaterInfo(layer.getBounds().getCenter().lat, layer.getBounds().getCenter().lng);
+            layer.bindPopup(`
+              <div style="font-size:16px;">
+                <b>💧 Водный объект</b><br>
+                📊 ИЗВ: ${waterInfo.izv}<br>
+                🐟 Биоценоз: ${waterInfo.biocenosis}<br>
+                🚫 Загрязнители: ${waterInfo.pollutants}<br>
+                📏 Площадь: ${area}
+              </div>
+            `);
+          } else {
+            layer.bindPopup(`
+              <b>📍 Тип:</b> ${soilInfo.soilClass}<br>
+              <b>🔬 pH:</b> ${formatValue(soilInfo.ph)}<br>
+              <b>🌿 OC (%):</b> ${formatValue(soilInfo.oc)}<br>
+              <b>📏 Площадь:</b> ${area}<br>
+              <b>⚙️ K<sub>soil</sub>:</b> ${soilInfo.ksoil.toFixed(2)}
+            `);
+          }
         }
       });
 
