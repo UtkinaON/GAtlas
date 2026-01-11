@@ -85,7 +85,7 @@ function calculateGII(ksoil, kugv, koopr, material) {
   `;
   
   //!!!! меню название
-  document.getElementById('giiBtn').innerText = 'Новый Текст';
+  document.getElementById('giiBtn').innerText = 'Интегральный показатель GII';
 }
 
 function getRiskClass(gii) {
@@ -378,7 +378,8 @@ document.addEventListener('DOMContentLoaded', function() {
             `);
           } else {
             layer.bindPopup(`
-              <b>📍 Тип:</b> ${soilInfo.soilClass}<br>
+			  <b>📍 Координаты:${lat.toFixed(4)}, ${lng.toFixed(4)}</br>
+              <b>🌱 Тип:</b> ${soilInfo.soilClass}<br>
               <b>🔬 pH:</b> ${formatValue(soilInfo.ph)}<br>
               <b>🌿 OC (%):</b> ${formatValue(soilInfo.oc)}<br>
               <b>📏 Площадь:</b> ${area}<br>
