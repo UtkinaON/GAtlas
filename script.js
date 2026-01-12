@@ -85,7 +85,7 @@ function calculateGII(ksoil, kugv, koopr, material) {
   `;
   
   //!!!! меню название
-  document.getElementById('giiBtn').innerText = 'Интегральный показатель GII';
+  document.getElementById('giiBtn').innerText = 'Уровень геоэкологического риска';
 }
 
 function getRiskClass(gii) {
